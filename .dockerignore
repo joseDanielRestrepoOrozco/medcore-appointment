@@ -1,0 +1,8 @@
+node_modules
+.env
+.git
+.gitignore
+dist
+
+# Carpeta generada de Prisma
+/src/generated/prisma
