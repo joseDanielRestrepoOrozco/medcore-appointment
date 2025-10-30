@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
@@ -14,12 +14,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enum: estados de una cita
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// NOTE: Specialty, Doctor and Patient entities are managed by the `medcore-users` microservice.
+// This service (medcore-appointment) will reference users by their ObjectId (String @db.ObjectId).
+
+// Plantilla semanal de disponibilidad de un doctor
+// dayOfWeek: 0=Sunday, 1=Monday, ... 6=Saturday (coincide con JS Date#getDay())
+model ScheduleTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId  String   @db.ObjectId
+  dayOfWeek Int
+  startTime String // formato "HH:MM", e.g. "08:00"
+  endTime   String // formato "HH:MM", e.g. "17:00"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Excepciones para una fecha concreta (bloqueos o ventanas especiales)
+model ScheduleException {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId  String   @db.ObjectId
+  date      DateTime // usaremos la parte de fecha (time a 00:00) para identificar el día
+  startTime String? // si null => día completo bloqueado
+  endTime   String?
+  isBlocked Boolean  @default(true)
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Citas agendadas
 model Appointment {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  patientId     String
-  doctorId      String
-  reason        String
-  appointmentAt DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  patientId   String            @db.ObjectId
+  doctorId    String            @db.ObjectId
+  specialtyId String?           @db.ObjectId
+  reason      String?
+  startAt     DateTime
+  endAt       DateTime
+  duration    Int               @default(30) // minutos
+  status      AppointmentStatus @default(SCHEDULED)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 }

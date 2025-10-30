@@ -1,28 +1,16 @@
 {
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "module": "nodenext",
-    "target": "ES2022",
-    "types": [],
-    "moduleResolution": "nodenext",
-    "sourceMap": false,
-    "declaration": false,
-    "declarationMap": false,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    "target": "ES2021",
+    "module": "commonjs",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": false,
     "esModuleInterop": true,
-    "typeRoots": ["./src/types", "./node_modules/@types"],
-    "strict": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
+    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "exactOptionalPropertyTypes": false
+    "resolveJsonModule": true,
+    "moduleResolution": "node"
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

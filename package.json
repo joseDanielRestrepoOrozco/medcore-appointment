@@ -1,41 +1,25 @@
 {
   "name": "medcore-appointment",
-  "version": "1.0.0",
-  "description": "",
-  "type": "module",
-  "main": "index.js",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "tsc -p .",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "lint": "eslint ."
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.18.0",
     "cors": "^2.8.5",
-    "D": "^1.0.0",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "multer": "^2.0.2",
-    "zod": "^4.1.12"
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "luxon": "^3.4.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.38.0",
-    "@stylistic/eslint-plugin": "^5.5.0",
-    "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
-    "@types/dotenv": "^6.1.1",
-    "@types/express": "^5.0.5",
-    "@types/node": "^24.9.1",
-    "dotenv-cli": "^10.0.0",
-    "eslint": "^9.38.0",
-    "prisma": "^6.18.0",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.2"
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.4.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.2",
+    "prisma": "^6.18.0"
   }
 }
