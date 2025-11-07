@@ -19,7 +19,16 @@ enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
   CANCELLED
+  IN_PROGRESS
+  NO_SHOW
   COMPLETED
+}
+
+// Estado de sincronización con el calendario externo
+enum CalendarSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
 }
 
 // NOTE: Specialty, Doctor and Patient entities are managed by the `medcore-users` microservice.
@@ -52,15 +61,19 @@ model ScheduleException {
 
 // Citas agendadas
 model Appointment {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  patientId   String            @db.ObjectId
-  doctorId    String            @db.ObjectId
-  specialtyId String?           @db.ObjectId
-  reason      String?
-  startAt     DateTime
-  endAt       DateTime
-  duration    Int               @default(30) // minutos
-  status      AppointmentStatus @default(SCHEDULED)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  patientId          String             @db.ObjectId
+  doctorId           String             @db.ObjectId
+  specialtyId        String?            @db.ObjectId
+  reason             String?
+  startAt            DateTime
+  endAt              DateTime
+  duration           Int                @default(30) // minutos
+  status             AppointmentStatus  @default(SCHEDULED)
+  // Campos para integración con Google Calendar / calendarios externos
+  calendarEventId    String?
+  calendarSyncStatus CalendarSyncStatus @default(PENDING)
+  lastCalendarSync   DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 }

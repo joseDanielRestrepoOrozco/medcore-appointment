@@ -4,10 +4,21 @@ import * as service from '../services/appointments.service';
 export async function createAppointment(req: Request, res: Response) {
   try {
     const payload = req.body;
-    const result = await service.createAppointment(payload);
+    const authHeader = String(req.get('authorization') || '');
+    const result = await service.createAppointment(payload, authHeader || undefined);
     res.status(201).json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Error creating appointment' });
+  }
+}
+
+export async function listAppointments(req: Request, res: Response) {
+  try {
+    // simple listing; could support pagination/filters via query params
+    const items = await service.listAppointments();
+    res.json(items);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -19,6 +30,16 @@ export async function getAppointmentById(req: Request, res: Response) {
     res.json(appt);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteAppointment(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const updated = await service.cancelAppointment(id);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
   }
 }
 
@@ -58,6 +79,62 @@ export async function updateAppointmentState(req: Request, res: Response) {
     const { id } = req.params;
     const { status } = req.body;
     const updated = await service.updateAppointmentStatus(id, status);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
+export async function cancelAppointment(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const updated = await service.cancelAppointment(id);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
+export async function reprogramAppointment(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { newStartAt } = req.body;
+    const updated = await service.reprogramAppointment(id, newStartAt);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
+// PUT /:id -> alias to reprogramAppointment (keeps same validation)
+export async function reprogramAppointmentByPut(req: Request, res: Response) {
+  return reprogramAppointment(req, res);
+}
+
+export async function confirmAppointment(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const updated = await service.confirmAppointment(id);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
+export async function completeAppointment(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const updated = await service.completeAppointment(id);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
+export async function markNoShow(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const updated = await service.markNoShow(id);
     res.json(updated);
   } catch (err: any) {
     res.status(400).json({ error: err.message });

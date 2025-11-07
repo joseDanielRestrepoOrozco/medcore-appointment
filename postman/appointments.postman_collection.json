@@ -1,0 +1,124 @@
+{
+  "info": {
+    "_postman_id": "medcore-appointments-collection",
+    "name": "MedCore Appointments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Colección para probar el microservicio de citas a través del API Gateway. Usa las variables del environment (gateway_url, internal_token, access_token, doctor_id, patient_id, appointment_id)."
+  },
+  "item": [
+    {
+      "name": "Login Admin",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@local.test\",\n  \"password\": \"password\"\n}\n" },
+        "url": { "raw": "{{gateway_url}}/api/v1/auth/login", "host": [ "{{gateway_url}}" ], "path": [ "api","v1","auth","login" ] }
+      },
+      "event": [ { "listen": "test", "script": { "exec": [ "const json = pm.response.json();", "if (json?.access_token) pm.environment.set('access_token', json.access_token);" ], "type": "text/javascript" } } ]
+    },
+    {
+      "name": "Create Appointment (S2S / JWT)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-internal-token", "value": "{{internal_token}}", "disabled": true },
+          { "key": "Authorization", "value": "Bearer {{access_token}}", "disabled": false }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"{{patient_id}}\",\n  \"doctorId\": \"{{doctor_id}}\",\n  \"startAt\": \"2025-11-10T09:00:00\",\n  \"reason\": \"Prueba S2S desde Postman\"\n}"
+        },
+  "url": { "raw": "{{gateway_url}}/api/v1/appointments/", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments",""] }
+      }
+      ,"event": [ { "listen": "test", "script": { "exec": [ "pm.test('Status is 201', () => { pm.expect(pm.response.code).to.eql(201); });", "const json = pm.response.json();", "if (json?.id) pm.environment.set('appointment_id', json.id);" ], "type": "text/javascript" } } ]
+    },
+    {
+      "name": "Get Availability",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Accept", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/disponibilidad?doctor_id={{doctor_id}}&fecha=2025-11-10", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","disponibilidad"], "query": [ { "key": "doctor_id", "value": "{{doctor_id}}" }, { "key": "fecha", "value": "2025-11-10" } ] }
+      }
+    },
+    {
+      "name": "Get Appointment by Id",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/{{appointment_id}}", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","{{appointment_id}}"] }
+      }
+    },
+    {
+      "name": "Cancel Appointment",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/{{appointment_id}}/cancel", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","{{appointment_id}}","cancel"] }
+      }
+    },
+    {
+      "name": "Reprogram Appointment",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"newStartAt\": \"2025-11-11T10:00:00\"\n}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/{{appointment_id}}/reprogram", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","{{appointment_id}}","reprogram"] }
+      }
+    },
+    {
+      "name": "Confirm Appointment",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/{{appointment_id}}/confirm", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","{{appointment_id}}","confirm"] }
+      }
+    },
+    {
+      "name": "Complete Appointment",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/{{appointment_id}}/complete", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","{{appointment_id}}","complete"] }
+      }
+    },
+    {
+      "name": "Mark No-Show",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/{{appointment_id}}/no-show", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","{{appointment_id}}","no-show"] }
+      }
+    },
+    {
+      "name": "Create Template (doctor availability)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"doctorId\": \"{{doctor_id}}\",\n  \"dayOfWeek\": 1,\n  \"startTime\": \"08:00\",\n  \"endTime\": \"12:00\"\n}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/templates", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","templates"] }
+      }
+    },
+    {
+      "name": "Create Exception (block day)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "x-internal-token", "value": "{{internal_token}}" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"doctorId\": \"{{doctor_id}}\",\n  \"date\": \"2025-11-10\",\n  \"isBlocked\": true,\n  \"reason\": \"Bloqueo por mantenimiento\"\n}" },
+        "url": { "raw": "{{gateway_url}}/api/v1/appointments/exceptions", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","exceptions"] }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "gateway_url", "value": "http://localhost:3000" },
+    { "key": "internal_token", "value": "" },
+    { "key": "access_token", "value": "" },
+    { "key": "doctor_id", "value": "" },
+    { "key": "patient_id", "value": "" },
+    { "key": "appointment_id", "value": "" }
+  ]
+}

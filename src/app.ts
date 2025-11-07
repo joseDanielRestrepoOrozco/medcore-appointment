@@ -7,6 +7,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Simple request logger to help diagnose incoming paths (development only)
+app.use((req, _res, next) => {
+  // eslint-disable-next-line no-console
+  console.log(`[req] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// Mount appointments router at the canonical service prefix only.
+// The API Gateway is responsible for prefix rewriting. Keeping a single prefix
+// preserves a clean separation of concerns and a predictable routing surface.
 app.use('/api/appointments', appointmentsRouter);
 
 app.get('/', (_req, res) => {
