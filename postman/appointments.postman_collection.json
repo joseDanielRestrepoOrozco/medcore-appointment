@@ -112,6 +112,65 @@
         "url": { "raw": "{{gateway_url}}/api/v1/appointments/exceptions", "host": ["{{gateway_url}}"], "path": ["api","v1","appointments","exceptions"] }
       }
     }
+    ,
+    {
+      "name": "Queue: Join (Patient)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctorId\": \"{{doctor_id}}\",\n  \"patientId\": \"{{patient_id}}\"\n}"
+        },
+        "url": { "raw": "{{gateway_url}}/api/queue/join", "host": [ "{{gateway_url}}" ], "path": [ "api","queue","join" ] }
+      },
+      "event": [ { "listen": "test", "script": { "exec": [ "pm.test('Status is 201', () => { pm.expect(pm.response.code).to.eql(201); });", "const json = pm.response.json();", "if (json?.ticketId) pm.environment.set('ticket_id', json.ticketId);" ], "type": "text/javascript" } } ]
+    },
+    {
+      "name": "Queue: Get Current (Doctor)",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "url": { "raw": "{{gateway_url}}/api/queue/doctor/{{doctor_id}}/current", "host": [ "{{gateway_url}}" ], "path": [ "api","queue","doctor","{{doctor_id}}","current" ] }
+      }
+    },
+    {
+      "name": "Queue: Call Next (Doctor)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"doctorId\": \"{{doctor_id}}\"\n}" },
+        "url": { "raw": "{{gateway_url}}/api/queue/call-next", "host": [ "{{gateway_url}}" ], "path": [ "api","queue","call-next" ] }
+      }
+    },
+    {
+      "name": "Queue: Complete Ticket (Doctor)",
+      "request": {
+        "method": "PUT",
+        "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "body": { "mode": "raw", "raw": "{}" },
+        "url": { "raw": "{{gateway_url}}/api/queue/ticket/{{ticket_id}}/complete", "host": [ "{{gateway_url}}" ], "path": [ "api","queue","ticket","{{ticket_id}}","complete" ] }
+      }
+    },
+    {
+      "name": "Queue: Get Position",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "url": { "raw": "{{gateway_url}}/api/queue/ticket/{{ticket_id}}/position", "host": [ "{{gateway_url}}" ], "path": [ "api","queue","ticket","{{ticket_id}}","position" ] }
+      }
+    },
+    {
+      "name": "Queue: My Tickets",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Authorization", "value": "Bearer {{access_token}}" } ],
+        "url": { "raw": "{{gateway_url}}/api/queue/me", "host": [ "{{gateway_url}}" ], "path": [ "api","queue","me" ] }
+      }
+    }
   ],
   "variable": [
     { "key": "gateway_url", "value": "http://localhost:3000" },
@@ -119,6 +178,7 @@
     { "key": "access_token", "value": "" },
     { "key": "doctor_id", "value": "" },
     { "key": "patient_id", "value": "" },
-    { "key": "appointment_id", "value": "" }
+    { "key": "appointment_id", "value": "" },
+    { "key": "ticket_id", "value": "" }
   ]
 }

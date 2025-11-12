@@ -77,3 +77,25 @@ model Appointment {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 }
+
+// Tickets de cola de espera por doctor
+enum TicketStatus {
+  WAITING
+  CALLED
+  COMPLETED
+  CANCELLED
+}
+
+model Ticket {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId    String       @db.ObjectId
+  patientId   String       @db.ObjectId
+  status      TicketStatus @default(WAITING)
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  calledAt    DateTime?
+  completedAt DateTime?
+  updatedAt   DateTime     @updatedAt
+
+  @@index([doctorId, status, createdAt])
+}

@@ -276,12 +276,9 @@ export async function cancelAppointment(id: string) {
   const hoursDiff = startLocal.diff(nowLocal, 'hours').hours;
   if (hoursDiff < 4) throw new Error('Cancellations must be made at least 4 hours before the appointment');
 
-  const updated = await prisma.appointment.update({ where: { id }, data: { status: 'CANCELLED' } as any });
-  try {
-    await enqueueCalendarJob({ type: 'delete', appointmentId: id });
-  } catch (e) {
-    console.warn('Could not enqueue calendar delete job', e);
-  }
+  // Use the state-machine validation implemented in updateAppointmentStatus
+  // This enforces allowed transitions and also enqueues calendar jobs
+  const updated = await updateAppointmentStatus(id, 'CANCELLED');
   return updated;
 }
 

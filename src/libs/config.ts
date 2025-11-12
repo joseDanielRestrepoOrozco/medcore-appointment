@@ -8,6 +8,8 @@ export const DEFAULT_TIMEZONE = process.env.DEFAULT_TIMEZONE || 'America/Bogota'
 // URL del microservicio de users (para validar doctor/paciente). Ajustar según despliegue.
 export const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || process.env.USERS_URL || 'http://localhost:3002';
 
+export const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+
 // Token compartido para llamadas internas entre microservicios (para /internal endpoints)
 export const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || '';
 
