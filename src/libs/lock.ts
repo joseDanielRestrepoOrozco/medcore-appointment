@@ -1,6 +1,6 @@
 // Use dynamic require so build doesn't fail when redlock is not installed
 declare const require: any;
-import redis from './redisClient';
+import redis from './redisClient.js';
 
 let redlock: any;
 try {

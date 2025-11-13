@@ -12,7 +12,7 @@ type CalendarJobPayload = {
 // configured it will add to BullMQ; otherwise it pushes into an in-memory
 // queue. The function signature is simplified to accept only the payload so
 // callers don't need to pass a queue name.
-let add: (payload: CalendarJobPayload) => Promise<void>;
+let add: ((payload: CalendarJobPayload) => Promise<void>) | undefined;
 
 if (REDIS_URL) {
   // lazy-require to avoid hard dependency crash if not installed
@@ -26,7 +26,9 @@ if (REDIS_URL) {
     };
     console.info('queue: using BullMQ with REDIS_URL');
   } catch (e) {
-    console.warn('queue: REDIS_URL provided but bullmq not installed, falling back to in-memory queue');
+    console.warn(
+      'queue: REDIS_URL provided but bullmq not installed, falling back to in-memory queue'
+    );
   }
 }
 
@@ -40,6 +42,9 @@ if (!add) {
 }
 
 export async function enqueueCalendarJob(payload: CalendarJobPayload) {
+  if (!add) {
+    throw new Error('Queue not initialized');
+  }
   return add(payload);
 }
 

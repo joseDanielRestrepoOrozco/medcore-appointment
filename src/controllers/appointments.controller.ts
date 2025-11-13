@@ -1,18 +1,24 @@
-import { Request, Response } from 'express';
-import * as service from '../services/appointments.service';
+import { type Request, type Response } from 'express';
+import * as service from '../services/appointments.service.js';
 
 export async function createAppointment(req: Request, res: Response) {
   try {
     const payload = req.body;
+
     const authHeader = String(req.get('authorization') || '');
-    const result = await service.createAppointment(payload, authHeader || undefined);
+    const result = await service.createAppointment(
+      payload,
+      authHeader || undefined
+    );
     res.status(201).json(result);
   } catch (err: any) {
-    res.status(400).json({ error: err.message || 'Error creating appointment' });
+    res
+      .status(400)
+      .json({ error: err.message || 'Error creating appointment' });
   }
 }
 
-export async function listAppointments(req: Request, res: Response) {
+export async function listAppointments(_req: Request, res: Response) {
   try {
     // simple listing; could support pagination/filters via query params
     const items = await service.listAppointments();
@@ -25,8 +31,17 @@ export async function listAppointments(req: Request, res: Response) {
 export async function getAppointmentById(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const appt = await service.getAppointmentById(id);
-    if (!appt) return res.status(404).json({ error: 'Not found' });
+    if (!appt) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
     res.json(appt);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -36,6 +51,12 @@ export async function getAppointmentById(req: Request, res: Response) {
 export async function deleteAppointment(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const updated = await service.cancelAppointment(id);
     res.json(updated);
   } catch (err: any) {
@@ -46,9 +67,16 @@ export async function deleteAppointment(req: Request, res: Response) {
 export async function getAvailability(req: Request, res: Response) {
   try {
     const { doctor_id, fecha } = req.query as any;
-    if (!doctor_id || !fecha) return res.status(400).json({ error: 'doctor_id and fecha are required' });
-    const slots = await service.getAvailability(String(doctor_id), String(fecha));
+    if (!doctor_id || !fecha) {
+      res.status(400).json({ error: 'doctor_id and fecha are required' });
+      return;
+    }
+    const slots = await service.getAvailability(
+      String(doctor_id),
+      String(fecha)
+    );
     res.json({ date: fecha, slots });
+    return;
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -77,6 +105,12 @@ export async function createException(req: Request, res: Response) {
 export async function updateAppointmentState(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const { status } = req.body;
     const updated = await service.updateAppointmentStatus(id, status);
     res.json(updated);
@@ -88,6 +122,12 @@ export async function updateAppointmentState(req: Request, res: Response) {
 export async function cancelAppointment(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const updated = await service.cancelAppointment(id);
     res.json(updated);
   } catch (err: any) {
@@ -98,6 +138,12 @@ export async function cancelAppointment(req: Request, res: Response) {
 export async function reprogramAppointment(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const { newStartAt } = req.body;
     const updated = await service.reprogramAppointment(id, newStartAt);
     res.json(updated);
@@ -114,7 +160,13 @@ export async function reprogramAppointmentByPut(req: Request, res: Response) {
 export async function confirmAppointment(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const updated = await service.confirmAppointment(id);
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
+    const updated = await service.confirmAppointment(id, req.user?.id || '');
     res.json(updated);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -124,6 +176,12 @@ export async function confirmAppointment(req: Request, res: Response) {
 export async function completeAppointment(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const updated = await service.completeAppointment(id);
     res.json(updated);
   } catch (err: any) {
@@ -134,6 +192,12 @@ export async function completeAppointment(req: Request, res: Response) {
 export async function markNoShow(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+
     const updated = await service.markNoShow(id);
     res.json(updated);
   } catch (err: any) {

@@ -1,7 +1,7 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
-import queue, { drainInMemoryQueue } from '../libs/queue';
-import googleCalendar from '../libs/googleCalendar';
+import { drainInMemoryQueue } from '../libs/queue.js';
+import googleCalendar from '../libs/googleCalendar.js';
 
 // Simple in-process worker. If BullMQ/Redis is configured, prefer running a dedicated
 // worker process (this file can be started with `npm run worker`). If not, this
@@ -10,7 +10,9 @@ import googleCalendar from '../libs/googleCalendar';
 async function processJob(job: any) {
   try {
     const { type, appointmentId } = job;
-    const appt = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+    const appt = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
     if (!appt) {
       console.warn('calendarWorker: appointment not found', appointmentId);
       return;
@@ -19,22 +21,49 @@ async function processJob(job: any) {
     const apptAny = appt as any;
     if (type === 'create') {
       const evt = await googleCalendar.createEvent(apptAny);
-      await prisma.appointment.update({ where: { id: appointmentId }, data: { calendarEventId: evt.id || evt.summary || null, calendarSyncStatus: 'SYNCED', lastCalendarSync: new Date() } as any });
+      await prisma.appointment.update({
+        where: { id: appointmentId },
+        data: {
+          calendarEventId: evt.id || evt.summary || null,
+          calendarSyncStatus: 'SYNCED',
+          lastCalendarSync: new Date(),
+        } as any,
+      });
       console.info('calendarWorker: created event', evt.id);
     } else if (type === 'update') {
       if (apptAny.calendarEventId) {
         await googleCalendar.updateEvent(apptAny.calendarEventId, apptAny);
-        await prisma.appointment.update({ where: { id: appointmentId }, data: { calendarSyncStatus: 'SYNCED', lastCalendarSync: new Date() } as any });
+        await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: {
+            calendarSyncStatus: 'SYNCED',
+            lastCalendarSync: new Date(),
+          } as any,
+        });
         console.info('calendarWorker: updated event', apptAny.calendarEventId);
       } else {
         const evt = await googleCalendar.createEvent(apptAny);
-        await prisma.appointment.update({ where: { id: appointmentId }, data: { calendarEventId: evt.id || null, calendarSyncStatus: 'SYNCED', lastCalendarSync: new Date() } as any });
+        await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: {
+            calendarEventId: evt.id || null,
+            calendarSyncStatus: 'SYNCED',
+            lastCalendarSync: new Date(),
+          } as any,
+        });
         console.info('calendarWorker: created event (fallback)', evt.id);
       }
     } else if (type === 'delete') {
       if (apptAny.calendarEventId) {
         await googleCalendar.deleteEvent(apptAny.calendarEventId);
-        await prisma.appointment.update({ where: { id: appointmentId }, data: { calendarEventId: null, calendarSyncStatus: 'SYNCED', lastCalendarSync: new Date() } as any });
+        await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: {
+            calendarEventId: null,
+            calendarSyncStatus: 'SYNCED',
+            lastCalendarSync: new Date(),
+          } as any,
+        });
         console.info('calendarWorker: deleted event', apptAny.calendarEventId);
       }
     }
@@ -43,7 +72,13 @@ async function processJob(job: any) {
     try {
       // Mark appointment as FAILED sync if possible
       if (job && job.appointmentId) {
-        await prisma.appointment.update({ where: { id: job.appointmentId }, data: { calendarSyncStatus: 'FAILED', lastCalendarSync: new Date() } as any });
+        await prisma.appointment.update({
+          where: { id: job.appointmentId },
+          data: {
+            calendarSyncStatus: 'FAILED',
+            lastCalendarSync: new Date(),
+          } as any,
+        });
       }
     } catch (e2) {
       // swallow
@@ -63,11 +98,11 @@ async function run() {
     }
     // sleep 1s
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1000));
   }
 }
 
-run().catch((e) => {
+run().catch(e => {
   console.error('calendarWorker: fatal', e);
   process.exit(1);
 });

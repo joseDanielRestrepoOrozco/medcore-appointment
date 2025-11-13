@@ -1,6 +1,6 @@
 // Use dynamic require so build doesn't fail when ioredis is not installed in the environment
 declare const require: any;
-import { REDIS_URL } from './config';
+import { REDIS_URL } from './config.js';
 
 let redis: any;
 try {
@@ -11,7 +11,9 @@ try {
   });
 } catch (e) {
   // Fallback: simple in-memory stub for local dev if ioredis isn't installed
-  console.warn('ioredis not available; using in-memory Redis stub (not for production)');
+  console.warn(
+    'ioredis not available; using in-memory Redis stub (not for production)'
+  );
   const store = new Map<string, any>();
   redis = {
     get: async (k: string) => store.get(k),

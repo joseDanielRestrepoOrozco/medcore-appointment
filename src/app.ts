@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import appointmentsRouter from './routes/appointments.routes';
-import queueRouter from './routes/queue.routes';
+import appointmentsRouter from './routes/appointments.routes.js';
+import queueRouter from './routes/queue.routes.js';
 
 const app = express();
 
@@ -18,9 +18,9 @@ app.use((req, _res, next) => {
 // Mount appointments router at the canonical service prefix only.
 // The API Gateway is responsible for prefix rewriting. Keeping a single prefix
 // preserves a clean separation of concerns and a predictable routing surface.
-app.use('/api/appointments', appointmentsRouter);
+app.use('/api/v1/appointments', appointmentsRouter);
 // Queue (waiting list) endpoints
-app.use('/api/queue', queueRouter);
+app.use('/api/v1/queue', queueRouter);
 
 app.get('/', (_req, res) => {
   res.json({ service: 'medcore-appointment', status: 'ok' });
