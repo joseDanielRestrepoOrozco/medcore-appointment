@@ -684,9 +684,14 @@ export async function confirmAppointment(
   return updated;
 }
 
-export const getAppointmentsByPatientId = async (patientId: string) => {
-  const appt = await prisma.appointment.findMany({
-    where: { patientId },
+export const getAppointmentsByUserId = async (userId: string) => {
+  const appts = await prisma.appointment.findMany({
+    where: {
+      OR: [
+        { patientId: userId },
+        { doctorId: userId }
+      ]
+    },
   });
-  return appt;
+  return appts;
 };
