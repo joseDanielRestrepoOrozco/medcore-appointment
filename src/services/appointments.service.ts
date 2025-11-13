@@ -27,6 +27,9 @@ function convertAppointmentToLocal(appt: any) {
     endAt: toISO((appt as any).endAt),
     createdAt: toISO((appt as any).createdAt),
     updatedAt: toISO((appt as any).updatedAt),
+    // include persisted local-iso fields if present
+    startAtLocal: (appt as any).startAtLocal || toISO((appt as any).startAt),
+    endAtLocal: (appt as any).endAtLocal || toISO((appt as any).endAt),
   } as any;
 }
 
@@ -217,6 +220,9 @@ export async function createAppointment(
         reason,
         startAt: startUTC.toJSDate(),
         endAt: endUTC.toJSDate(),
+        // persist the original wall-clock ISO in configured zone for easier inspection
+        startAtLocal: startLocal.toISO(),
+        endAtLocal: endUTC.setZone(zone).toISO(),
         duration,
       } as any,
     });
@@ -544,6 +550,8 @@ export async function reprogramAppointment(
     data: {
       startAt: newStartUTC.toJSDate(),
       endAt: newEndUTC.toJSDate(),
+      startAtLocal: newStartLocal.toISO(),
+      endAtLocal: newEndUTC.setZone(zone).toISO(),
     } as any,
   });
   try {

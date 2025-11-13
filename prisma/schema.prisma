@@ -67,6 +67,9 @@ model Appointment {
   reason             String?
   startAt            DateTime
   endAt              DateTime
+  // Store the original wall-clock ISO (in DEFAULT_TIMEZONE) for easier debugging/queries
+  startAtLocal       String?
+  endAtLocal         String?
   duration           Int                @default(30) // minutos
   status             AppointmentStatus  @default(SCHEDULED)
   // Campos para integración con Google Calendar / calendarios externos
