@@ -8,6 +8,28 @@ import type { UserPayload } from '../types/express.js';
 
 const prisma = new PrismaClient();
 
+// Convert appointment Date fields (stored in UTC) to ISO strings in DEFAULT_TIMEZONE
+function convertAppointmentToLocal(appt: any) {
+  if (!appt) return appt;
+  const zone = DEFAULT_TIMEZONE || 'America/Bogota';
+  const toISO = (val: any) => {
+    if (!val) return val;
+    if (val instanceof Date) return DateTime.fromJSDate(val).setZone(zone).toISO();
+    // assume string-like
+    const dt = DateTime.fromISO(String(val));
+    if (!dt.isValid) return val;
+    return dt.setZone(zone).toISO();
+  };
+
+  return {
+    ...appt,
+    startAt: toISO((appt as any).startAt),
+    endAt: toISO((appt as any).endAt),
+    createdAt: toISO((appt as any).createdAt),
+    updatedAt: toISO((appt as any).updatedAt),
+  } as any;
+}
+
 // Helper function to check if user has access to an appointment
 async function checkAppointmentAccess(
   appointmentId: string,
@@ -209,7 +231,16 @@ export async function createAppointment(
       console.warn('Could not enqueue calendar job', e);
     }
 
-    return created;
+    // Convert stored UTC dates back to default timezone for API consumers
+    const createdLocal = {
+      ...created,
+      startAt: DateTime.fromJSDate((created as any).startAt).setZone(zone).toISO(),
+      endAt: DateTime.fromJSDate((created as any).endAt).setZone(zone).toISO(),
+      createdAt: DateTime.fromJSDate((created as any).createdAt).setZone(zone).toISO(),
+      updatedAt: DateTime.fromJSDate((created as any).updatedAt).setZone(zone).toISO(),
+    } as any;
+
+    return createdLocal;
   } finally {
     try {
       if (lock) {
@@ -226,11 +257,13 @@ export async function createAppointment(
 
 export async function getAppointmentById(id: string, user?: UserPayload) {
   await checkAppointmentAccess(id, user);
-  return prisma.appointment.findUnique({ where: { id } });
+  const appt = await prisma.appointment.findUnique({ where: { id } });
+  return convertAppointmentToLocal(appt as any);
 }
 
 export async function listAppointments() {
-  return prisma.appointment.findMany({ orderBy: { startAt: 'asc' } } as any);
+  const appts = await prisma.appointment.findMany({ orderBy: { startAt: 'asc' } } as any);
+  return appts.map(a => convertAppointmentToLocal(a));
 }
 
 // Basic availability calculator: returns array of slot start ISO strings
@@ -371,7 +404,7 @@ async function updateAppointmentStatus(
 
   const current = (appt as any).status as string;
   const desired = status as string;
-  if (current === desired) return appt;
+  if (current === desired) return convertAppointmentToLocal(appt as any);
   const allowed = transitions[current] || [];
   if (!allowed.includes(desired))
     throw new Error(`Invalid state transition from ${current} to ${desired}`);
@@ -385,7 +418,7 @@ async function updateAppointmentStatus(
   } catch (e) {
     console.warn('Could not enqueue calendar update job', e);
   }
-  return updated;
+  return convertAppointmentToLocal(updated as any);
 }
 
 export async function cancelAppointment(id: string, user?: UserPayload) {
@@ -518,7 +551,7 @@ export async function reprogramAppointment(
   } catch (e) {
     console.warn('Could not enqueue calendar update job', e);
   }
-  return updated;
+  return convertAppointmentToLocal(updated as any);
 }
 
 export async function confirmAppointment(
@@ -536,7 +569,7 @@ export async function confirmAppointment(
   if ((appt as any).status === 'CANCELLED')
     throw new Error('Cannot confirm a cancelled appointment');
 
-  if ((appt as any).status === 'CONFIRMED') return appt;
+  if ((appt as any).status === 'CONFIRMED') return convertAppointmentToLocal(appt as any);
 
   if (appt.patientId !== patientId) {
     throw new Error('Patient ID does not match appointment');
@@ -551,5 +584,5 @@ export async function confirmAppointment(
   } catch (e) {
     console.warn('Could not enqueue calendar update job', e);
   }
-  return updated;
+  return convertAppointmentToLocal(updated as any);
 }
