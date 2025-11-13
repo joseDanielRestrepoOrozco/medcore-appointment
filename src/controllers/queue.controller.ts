@@ -232,3 +232,44 @@ export async function markNoShow(req: Request, res: Response) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+/**
+ * GET /api/queue/my-appointments?date=YYYY-MM-DD
+ * Get all appointments for the authenticated doctor on a specific date
+ * Query parameter: date (required) - Format: YYYY-MM-DD
+ */
+export async function getMyAppointmentsByDate(req: Request, res: Response) {
+  try {
+    const user = req.user;
+    const { date } = req.query;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!date || typeof date !== 'string') {
+      return res.status(400).json({
+        error: 'Date query parameter is required (format: YYYY-MM-DD)',
+      });
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        error: 'Invalid date format. Use YYYY-MM-DD (e.g., 2025-11-12)',
+      });
+    }
+
+    const appointments = await service.getAppointmentsByDate(user.id, date);
+
+    return res.json({
+      date,
+      appointments,
+      count: appointments.length,
+    });
+  } catch (err: any) {
+    console.error('[queue.getMyAppointmentsByDate] error', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}

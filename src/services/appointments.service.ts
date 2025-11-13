@@ -14,7 +14,8 @@ function convertAppointmentToLocal(appt: any) {
   const zone = DEFAULT_TIMEZONE || 'America/Bogota';
   const toISO = (val: any) => {
     if (!val) return val;
-    if (val instanceof Date) return DateTime.fromJSDate(val).setZone(zone).toISO();
+    if (val instanceof Date)
+      return DateTime.fromJSDate(val).setZone(zone).toISO();
     // assume string-like
     const dt = DateTime.fromISO(String(val));
     if (!dt.isValid) return val;
@@ -240,10 +241,18 @@ export async function createAppointment(
     // Convert stored UTC dates back to default timezone for API consumers
     const createdLocal = {
       ...created,
-      startAt: DateTime.fromJSDate((created as any).startAt).setZone(zone).toISO(),
-      endAt: DateTime.fromJSDate((created as any).endAt).setZone(zone).toISO(),
-      createdAt: DateTime.fromJSDate((created as any).createdAt).setZone(zone).toISO(),
-      updatedAt: DateTime.fromJSDate((created as any).updatedAt).setZone(zone).toISO(),
+      startAt: DateTime.fromJSDate((created as any).startAt)
+        .setZone(zone)
+        .toISO(),
+      endAt: DateTime.fromJSDate((created as any).endAt)
+        .setZone(zone)
+        .toISO(),
+      createdAt: DateTime.fromJSDate((created as any).createdAt)
+        .setZone(zone)
+        .toISO(),
+      updatedAt: DateTime.fromJSDate((created as any).updatedAt)
+        .setZone(zone)
+        .toISO(),
     } as any;
 
     return createdLocal;
@@ -268,7 +277,9 @@ export async function getAppointmentById(id: string, user?: UserPayload) {
 }
 
 export async function listAppointments() {
-  const appts = await prisma.appointment.findMany({ orderBy: { startAt: 'asc' } } as any);
+  const appts = await prisma.appointment.findMany({
+    orderBy: { startAt: 'asc' },
+  } as any);
   return appts.map(a => convertAppointmentToLocal(a));
 }
 
@@ -356,8 +367,123 @@ export async function createTemplate(payload: {
 }) {
   const { doctorId, dayOfWeek, startTime, endTime } = payload;
   if (!doctorId) throw new Error('doctorId required');
+
+  // Validate dayOfWeek (0=Sunday, 6=Saturday)
+  if (dayOfWeek < 0 || dayOfWeek > 6) {
+    throw new Error('dayOfWeek must be between 0 (Sunday) and 6 (Saturday)');
+  }
+
+  // Validate time format (HH:MM)
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+    throw new Error('Time format must be HH:MM (e.g., 08:00, 17:30)');
+  }
+
+  // Validate endTime > startTime
+  if (startTime >= endTime) {
+    throw new Error('endTime must be greater than startTime');
+  }
+
   return (prisma as any).scheduleTemplate.create({
     data: { doctorId, dayOfWeek, startTime, endTime },
+  });
+}
+
+/**
+ * Get all schedule templates for a specific doctor
+ */
+export async function getTemplatesByDoctor(doctorId: string) {
+  if (!doctorId) throw new Error('doctorId required');
+
+  return prisma.scheduleTemplate.findMany({
+    where: { doctorId },
+    orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+  });
+}
+
+/**
+ * Update a schedule template
+ * Only the owner doctor can update their own templates
+ */
+export async function updateTemplate(
+  templateId: string,
+  doctorId: string,
+  payload: {
+    dayOfWeek?: number;
+    startTime?: string;
+    endTime?: string;
+  }
+) {
+  if (!templateId) throw new Error('templateId required');
+  if (!doctorId) throw new Error('doctorId required');
+
+  // Check if template exists and belongs to the doctor
+  const existingTemplate = await prisma.scheduleTemplate.findUnique({
+    where: { id: templateId },
+  });
+
+  if (!existingTemplate) {
+    throw new Error('Template not found');
+  }
+
+  if (existingTemplate.doctorId !== doctorId) {
+    throw new Error('Access denied: You can only update your own templates');
+  }
+
+  // Validate dayOfWeek if provided
+  if (
+    payload.dayOfWeek !== undefined &&
+    (payload.dayOfWeek < 0 || payload.dayOfWeek > 6)
+  ) {
+    throw new Error('dayOfWeek must be between 0 (Sunday) and 6 (Saturday)');
+  }
+
+  // Validate time format if provided
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (payload.startTime && !timeRegex.test(payload.startTime)) {
+    throw new Error('startTime format must be HH:MM (e.g., 08:00)');
+  }
+  if (payload.endTime && !timeRegex.test(payload.endTime)) {
+    throw new Error('endTime format must be HH:MM (e.g., 17:30)');
+  }
+
+  // Get the final times to validate
+  const finalStartTime = payload.startTime ?? existingTemplate.startTime;
+  const finalEndTime = payload.endTime ?? existingTemplate.endTime;
+
+  if (finalStartTime >= finalEndTime) {
+    throw new Error('endTime must be greater than startTime');
+  }
+
+  return prisma.scheduleTemplate.update({
+    where: { id: templateId },
+    data: payload,
+  });
+}
+
+/**
+ * Delete a schedule template
+ * Only the owner doctor can delete their own templates
+ */
+export async function deleteTemplate(templateId: string, doctorId: string) {
+  if (!templateId) throw new Error('templateId required');
+  if (!doctorId) throw new Error('doctorId required');
+
+  // Check if template exists and belongs to the doctor
+  const existingTemplate = await (prisma as any).scheduleTemplate.findUnique({
+    where: { id: templateId },
+  });
+
+  if (!existingTemplate) {
+    throw new Error('Template not found');
+  }
+
+  if (existingTemplate.doctorId !== doctorId) {
+    throw new Error('Access denied: You can only delete your own templates');
+  }
+
+  return (prisma as any).scheduleTemplate.delete({
+    where: { id: templateId },
   });
 }
 
@@ -577,7 +703,8 @@ export async function confirmAppointment(
   if ((appt as any).status === 'CANCELLED')
     throw new Error('Cannot confirm a cancelled appointment');
 
-  if ((appt as any).status === 'CONFIRMED') return convertAppointmentToLocal(appt as any);
+  if ((appt as any).status === 'CONFIRMED')
+    return convertAppointmentToLocal(appt as any);
 
   if (appt.patientId !== patientId) {
     throw new Error('Patient ID does not match appointment');

@@ -41,4 +41,11 @@ router.patch(
   controller.markNoShow
 );
 
+// Get doctor's appointments by date
+router.get(
+  '/my-appointments',
+  requireRoles(['MEDICO']),
+  controller.getMyAppointmentsByDate
+);
+
 export default router;

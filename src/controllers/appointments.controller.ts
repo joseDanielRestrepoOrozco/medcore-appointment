@@ -94,11 +94,126 @@ export async function getAvailability(req: Request, res: Response) {
 
 export async function createTemplate(req: Request, res: Response) {
   try {
+    const user = req.user;
     const payload = req.body;
+
+    // If user is authenticated as a doctor, use their ID
+    if (user && user.role === 'MEDICO') {
+      payload.doctorId = user.id;
+    }
+
+    // Validate doctorId is present
+    if (!payload.doctorId) {
+      return res.status(400).json({ error: 'doctorId is required' });
+    }
+
+    // If user is a doctor, ensure they can only create for themselves
+    if (user && user.role === 'MEDICO' && payload.doctorId !== user.id) {
+      return res.status(403).json({
+        error: 'Access denied: You can only create templates for yourself',
+      });
+    }
+
     const tpl = await service.createTemplate(payload);
-    res.status(201).json(tpl);
+    return res.status(201).json(tpl);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+/**
+ * GET /templates
+ * Get all templates for the authenticated doctor
+ */
+export async function getMyTemplates(req: Request, res: Response) {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (user.role !== 'MEDICO') {
+      return res
+        .status(403)
+        .json({ error: 'Only doctors can access templates' });
+    }
+
+    const templates = await service.getTemplatesByDoctor(user.id);
+    return res.json({ templates, count: templates.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * PUT /templates/:id
+ * Update a template for the authenticated doctor
+ */
+export async function updateTemplate(req: Request, res: Response) {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const payload = req.body;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (user.role !== 'MEDICO') {
+      return res
+        .status(403)
+        .json({ error: 'Only doctors can update templates' });
+    }
+
+    if (!id) {
+      return res.status(400).json({ error: 'Template ID is required' });
+    }
+
+    const updated = await service.updateTemplate(id, user.id, payload);
+    return res.json(updated);
+  } catch (err: any) {
+    const statusCode = err.message.includes('Access denied')
+      ? 403
+      : err.message.includes('not found')
+      ? 404
+      : 400;
+    return res.status(statusCode).json({ error: err.message });
+  }
+}
+
+/**
+ * DELETE /templates/:id
+ * Delete a template for the authenticated doctor
+ */
+export async function deleteTemplate(req: Request, res: Response) {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (user.role !== 'MEDICO') {
+      return res
+        .status(403)
+        .json({ error: 'Only doctors can delete templates' });
+    }
+
+    if (!id) {
+      return res.status(400).json({ error: 'Template ID is required' });
+    }
+
+    await service.deleteTemplate(id, user.id);
+    return res.json({ message: 'Template deleted successfully', id });
+  } catch (err: any) {
+    const statusCode = err.message.includes('Access denied')
+      ? 403
+      : err.message.includes('not found')
+      ? 404
+      : 400;
+    return res.status(statusCode).json({ error: err.message });
   }
 }
 

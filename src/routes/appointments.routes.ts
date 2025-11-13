@@ -13,6 +13,37 @@ router.get('/', controller.listAppointments);
 // Obtener disponibilidad para un doctor en una fecha (YYYY-MM-DD)
 router.get('/disponibilidad', controller.getAvailability);
 
+// ============= SCHEDULE TEMPLATES (Doctor's availability) =============
+// IMPORTANT: These routes must come BEFORE /:id to avoid matching "templates" as an ID
+
+// Get doctor's own templates (requires authentication as MEDICO)
+router.get('/templates', requireRoles(['MEDICO']), controller.getMyTemplates);
+
+// Create a new template (requires authentication as MEDICO)
+router.post('/templates', requireRoles(['MEDICO']), controller.createTemplate);
+
+// Update a template (requires authentication as MEDICO)
+router.put(
+  '/templates/:id',
+  requireRoles(['MEDICO']),
+  controller.updateTemplate
+);
+
+// Delete a template (requires authentication as MEDICO)
+router.delete(
+  '/templates/:id',
+  requireRoles(['MEDICO']),
+  controller.deleteTemplate
+);
+
+// ============= SCHEDULE EXCEPTIONS =============
+
+// Create exception (block/special hours for a specific date)
+router.post('/exceptions', controller.createException);
+
+// ============= APPOINTMENT CRUD BY ID =============
+// IMPORTANT: These routes with /:id must come AFTER specific routes like /templates
+
 // Obtener cita por id (requiere autenticación)
 router.get('/:id', authenticateUser(), controller.getAppointmentById);
 
@@ -21,10 +52,6 @@ router.put('/:id', authenticateUser(), controller.reprogramAppointment);
 
 // Borrar / cancelar cita usando DELETE (alias a cancel) (requiere autenticación)
 router.delete('/:id', authenticateUser(), controller.deleteAppointment);
-
-// Plantillas y excepciones
-router.post('/templates', controller.createTemplate);
-router.post('/exceptions', controller.createException);
 
 // Cambiar estado de una cita (requiere autenticación)
 // Cancelar una cita (>=4h antes) (requiere autenticación)

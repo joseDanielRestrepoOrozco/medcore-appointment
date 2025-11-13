@@ -256,3 +256,33 @@ export async function markNoShow(appointmentId: string, doctorId: string) {
 
   return updated;
 }
+
+/**
+ * Get all appointments for a doctor on a specific date
+ * @param doctorId - The doctor's ID
+ * @param date - Date string in format YYYY-MM-DD
+ * @returns List of appointments for that day ordered by startAt
+ */
+export async function getAppointmentsByDate(doctorId: string, date: string) {
+  // Parse the date and create start/end of day in UTC
+  const startOfDay = new Date(date);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(date);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      startAt: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    orderBy: {
+      startAt: 'asc',
+    },
+  });
+
+  return appointments;
+}
