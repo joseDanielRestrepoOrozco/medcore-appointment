@@ -8,31 +8,6 @@ import type { UserPayload } from '../types/express.js';
 
 const prisma = new PrismaClient();
 
-function convertAppointmentToLocal(appt: any) {
-  if (!appt) return appt;
-  const zone = DEFAULT_TIMEZONE || 'America/Bogota';
-  const toISO = (val: any) => {
-    if (!val) return val;
-    if (val instanceof Date)
-      return DateTime.fromJSDate(val).setZone(zone).toISO();
-    // assume string-like
-    const dt = DateTime.fromISO(String(val));
-    if (!dt.isValid) return val;
-    return dt.setZone(zone).toISO();
-  };
-
-  return {
-    ...appt,
-    startAt: toISO((appt as any).startAt),
-    endAt: toISO((appt as any).endAt),
-    createdAt: toISO((appt as any).createdAt),
-    updatedAt: toISO((appt as any).updatedAt),
-    // include persisted local-iso fields if present
-    startAtLocal: (appt as any).startAtLocal || toISO((appt as any).startAt),
-    endAtLocal: (appt as any).endAtLocal || toISO((appt as any).endAt),
-  } as any;
-}
-
 async function checkAppointmentAccess(
   appointmentId: string,
   user?: UserPayload
@@ -269,14 +244,14 @@ export async function createAppointment(
 export async function getAppointmentById(id: string, user?: UserPayload) {
   await checkAppointmentAccess(id, user);
   const appt = await prisma.appointment.findUnique({ where: { id } });
-  return convertAppointmentToLocal(appt as any);
+  return appt;
 }
 
 export async function listAppointments() {
   const appts = await prisma.appointment.findMany({
     orderBy: { startAt: 'asc' },
   } as any);
-  return appts.map(a => convertAppointmentToLocal(a));
+  return appts;
 }
 
 export async function getAvailability(doctorId: string, dateISO: string) {
@@ -520,7 +495,7 @@ async function updateAppointmentStatus(
 
   const current = (appt as any).status as string;
   const desired = status as string;
-  if (current === desired) return convertAppointmentToLocal(appt as any);
+  if (current === desired) return appt;
   const allowed = transitions[current] || [];
   if (!allowed.includes(desired))
     throw new Error(`Invalid state transition from ${current} to ${desired}`);
@@ -534,7 +509,7 @@ async function updateAppointmentStatus(
   } catch (e) {
     console.warn('Could not enqueue calendar update job', e);
   }
-  return convertAppointmentToLocal(updated as any);
+  return updated;
 }
 
 export async function cancelAppointment(id: string, user?: UserPayload) {
@@ -673,7 +648,7 @@ export async function reprogramAppointment(
   } catch (e) {
     console.warn('Could not enqueue calendar update job', e);
   }
-  return convertAppointmentToLocal(updated as any);
+  return updated;
 }
 
 export async function confirmAppointment(
@@ -691,8 +666,7 @@ export async function confirmAppointment(
   if ((appt as any).status === 'CANCELLED')
     throw new Error('Cannot confirm a cancelled appointment');
 
-  if ((appt as any).status === 'CONFIRMED')
-    return convertAppointmentToLocal(appt as any);
+  if ((appt as any).status === 'CONFIRMED') return appt;
 
   if (appt.patientId !== patientId) {
     throw new Error('Patient ID does not match appointment');
@@ -707,5 +681,12 @@ export async function confirmAppointment(
   } catch (e) {
     console.warn('Could not enqueue calendar update job', e);
   }
-  return convertAppointmentToLocal(updated as any);
+  return updated;
 }
+
+export const getAppointmentsByPatientId = async (patientId: string) => {
+  const appt = await prisma.appointment.findMany({
+    where: { patientId },
+  });
+  return appt;
+};

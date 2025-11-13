@@ -248,7 +248,8 @@ export async function cancelAppointment(req: Request, res: Response) {
   }
 }
 
-export async function reprogramAppointment(req: Request, res: Response) {
+// PUT /:id -> alias to reprogramAppointment (keeps same validation)
+export const reprogramAppointment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -264,6 +265,7 @@ export async function reprogramAppointment(req: Request, res: Response) {
       req.user
     );
     res.json(updated);
+    return;
   } catch (err: any) {
     const statusCode =
       err.message === 'Authentication required' ||
@@ -271,13 +273,25 @@ export async function reprogramAppointment(req: Request, res: Response) {
         ? 403
         : 400;
     res.status(statusCode).json({ error: err.message });
+    return;
   }
-}
+};
 
-// PUT /:id -> alias to reprogramAppointment (keeps same validation)
-export async function reprogramAppointmentByPut(req: Request, res: Response) {
-  return reprogramAppointment(req, res);
-}
+export const getMyAppointments = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const appointments = await service.getAppointmentsByPatientId(
+      user?.id ?? ''
+    );
+    res.json(appointments);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: 'Unknown error' });
+  }
+};
 
 export async function confirmAppointment(req: Request, res: Response) {
   try {

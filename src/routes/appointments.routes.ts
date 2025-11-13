@@ -8,10 +8,12 @@ const router = Router();
 router.post('/', controller.createAppointment);
 
 // Listar todas las citas (paginación/filtrado simple)
-router.get('/', controller.listAppointments);
+router.get('/', requireRoles(['ADMINISTRADOR']), controller.listAppointments);
 
 // Obtener disponibilidad para un doctor en una fecha (YYYY-MM-DD)
 router.get('/disponibilidad', controller.getAvailability);
+
+router.get('/me', authenticateUser(), controller.getMyAppointments);
 
 // ============= SCHEDULE TEMPLATES (Doctor's availability) =============
 // IMPORTANT: These routes must come BEFORE /:id to avoid matching "templates" as an ID
