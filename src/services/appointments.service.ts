@@ -8,7 +8,6 @@ import type { UserPayload } from '../types/express.js';
 
 const prisma = new PrismaClient();
 
-// Convert appointment Date fields (stored in UTC) to ISO strings in DEFAULT_TIMEZONE
 function convertAppointmentToLocal(appt: any) {
   if (!appt) return appt;
   const zone = DEFAULT_TIMEZONE || 'America/Bogota';
@@ -34,7 +33,6 @@ function convertAppointmentToLocal(appt: any) {
   } as any;
 }
 
-// Helper function to check if user has access to an appointment
 async function checkAppointmentAccess(
   appointmentId: string,
   user?: UserPayload
@@ -77,12 +75,6 @@ type CreateAppointmentPayload = {
   reason?: string;
 };
 
-// Business rules enforced here:
-// - duration must be exactly 30 minutes
-// - start time must be in the future (DEFAULT_TIMEZONE by default)
-// - start time must align to 00 or 30 minutes
-// - no overlapping appointments for doctor or patient (exclude CANCELLED)
-// - patient may have at most 3 upcoming active appointments
 export async function createAppointment(
   payload: CreateAppointmentPayload,
   authHeader?: string
@@ -102,7 +94,11 @@ export async function createAppointment(
   if (duration !== 30) throw new Error('Duration must be exactly 30 minutes');
 
   const zone = DEFAULT_TIMEZONE || 'America/Bogota';
-  const startLocal = DateTime.fromISO(startAt, { zone });
+  const rawStart = String(startAt || '');
+  // Normalize: interpret incoming value as wall-clock in DEFAULT_TIMEZONE.
+  // Strip trailing Z if present so the provided hour is preserved.
+  const startToParse = rawStart.replace(/Z$/i, '');
+  const startLocal = DateTime.fromISO(startToParse, { zone });
   if (!startLocal.isValid) throw new Error('Invalid startAt date');
 
   // Do not allow scheduling in the past
@@ -221,7 +217,7 @@ export async function createAppointment(
         reason,
         startAt: startUTC.toJSDate(),
         endAt: endUTC.toJSDate(),
-        // persist the original wall-clock ISO in configured zone for easier inspection
+        // persist the original wall-clock ISO in configured zone for inspection
         startAtLocal: startLocal.toISO(),
         endAtLocal: endUTC.setZone(zone).toISO(),
         duration,
@@ -283,7 +279,6 @@ export async function listAppointments() {
   return appts.map(a => convertAppointmentToLocal(a));
 }
 
-// Basic availability calculator: returns array of slot start ISO strings
 export async function getAvailability(doctorId: string, dateISO: string) {
   const date = DateTime.fromISO(dateISO, { zone: 'America/Bogota' });
   if (!date.isValid) throw new Error('Invalid date');
@@ -389,9 +384,6 @@ export async function createTemplate(payload: {
   });
 }
 
-/**
- * Get all schedule templates for a specific doctor
- */
 export async function getTemplatesByDoctor(doctorId: string) {
   if (!doctorId) throw new Error('doctorId required');
 
@@ -401,10 +393,6 @@ export async function getTemplatesByDoctor(doctorId: string) {
   });
 }
 
-/**
- * Update a schedule template
- * Only the owner doctor can update their own templates
- */
 export async function updateTemplate(
   templateId: string,
   doctorId: string,
@@ -461,10 +449,6 @@ export async function updateTemplate(
   });
 }
 
-/**
- * Delete a schedule template
- * Only the owner doctor can delete their own templates
- */
 export async function deleteTemplate(templateId: string, doctorId: string) {
   if (!templateId) throw new Error('templateId required');
   if (!doctorId) throw new Error('doctorId required');
@@ -603,7 +587,10 @@ export async function reprogramAppointment(
       'Reprogramming must be requested at least 24 hours before the appointment'
     );
 
-  const newStartLocal = DateTime.fromISO(newStartAt, { zone });
+  const rawNew = String(newStartAt || '');
+  // Normalize: interpret incoming value as wall-clock in DEFAULT_TIMEZONE.
+  const newToParse = rawNew.replace(/Z$/i, '');
+  const newStartLocal = DateTime.fromISO(newToParse, { zone });
   if (!newStartLocal.isValid) throw new Error('Invalid newStartAt date');
   if (newStartLocal <= nowLocal)
     throw new Error('New start must be in the future');
@@ -676,6 +663,7 @@ export async function reprogramAppointment(
     data: {
       startAt: newStartUTC.toJSDate(),
       endAt: newEndUTC.toJSDate(),
+      // persist local wall-clock ISO for consistency in DB
       startAtLocal: newStartLocal.toISO(),
       endAtLocal: newEndUTC.setZone(zone).toISO(),
     } as any,
