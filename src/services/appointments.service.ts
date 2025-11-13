@@ -4,8 +4,43 @@ import usersClient from '../libs/usersClient.js';
 import { DEFAULT_TIMEZONE } from '../libs/config.js';
 import redlock from '../libs/lock.js';
 import { enqueueCalendarJob } from '../libs/queue.js';
+import type { UserPayload } from '../types/express.js';
 
 const prisma = new PrismaClient();
+
+// Helper function to check if user has access to an appointment
+async function checkAppointmentAccess(
+  appointmentId: string,
+  user?: UserPayload
+): Promise<void> {
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+
+  // Admin can access everything
+  if (user.role === 'ADMIN') {
+    return;
+  }
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { patientId: true, doctorId: true },
+  });
+
+  if (!appointment) {
+    throw new Error('Appointment not found');
+  }
+
+  // Check if user is the patient or the doctor
+  const isPatient = appointment.patientId === user.id;
+  const isDoctor = appointment.doctorId === user.id;
+
+  if (!isPatient && !isDoctor) {
+    throw new Error(
+      'Access denied: you do not have permission to access this appointment'
+    );
+  }
+}
 
 type CreateAppointmentPayload = {
   patientId: string;
@@ -189,7 +224,8 @@ export async function createAppointment(
   }
 }
 
-export async function getAppointmentById(id: string) {
+export async function getAppointmentById(id: string, user?: UserPayload) {
+  await checkAppointmentAccess(id, user);
   return prisma.appointment.findUnique({ where: { id } });
 }
 
@@ -311,8 +347,15 @@ export async function createException(payload: {
   });
 }
 
-export async function updateAppointmentStatus(id: string, status: string) {
+async function updateAppointmentStatus(
+  id: string,
+  status: string,
+  user?: UserPayload
+) {
   if (!id || !status) throw new Error('id and status required');
+
+  await checkAppointmentAccess(id, user);
+
   const appt = await prisma.appointment.findUnique({ where: { id } });
   if (!appt) throw new Error('Appointment not found');
 
@@ -345,8 +388,11 @@ export async function updateAppointmentStatus(id: string, status: string) {
   return updated;
 }
 
-export async function cancelAppointment(id: string) {
+export async function cancelAppointment(id: string, user?: UserPayload) {
   if (!id) throw new Error('id required');
+
+  await checkAppointmentAccess(id, user);
+
   const appt = await prisma.appointment.findUnique({ where: { id } });
   if (!appt) throw new Error('Appointment not found');
 
@@ -363,12 +409,19 @@ export async function cancelAppointment(id: string) {
 
   // Use the state-machine validation implemented in updateAppointmentStatus
   // This enforces allowed transitions and also enqueues calendar jobs
-  const updated = await updateAppointmentStatus(id, 'CANCELLED');
+  const updated = await updateAppointmentStatus(id, 'CANCELLED', user);
   return updated;
 }
 
-export async function reprogramAppointment(id: string, newStartAt: string) {
+export async function reprogramAppointment(
+  id: string,
+  newStartAt: string,
+  user?: UserPayload
+) {
   if (!id || !newStartAt) throw new Error('id and newStartAt required');
+
+  await checkAppointmentAccess(id, user);
+
   const appt = await prisma.appointment.findUnique({ where: { id } });
   if (!appt) throw new Error('Appointment not found');
 
@@ -468,8 +521,15 @@ export async function reprogramAppointment(id: string, newStartAt: string) {
   return updated;
 }
 
-export async function confirmAppointment(id: string, patientId: string) {
+export async function confirmAppointment(
+  id: string,
+  patientId: string,
+  user?: UserPayload
+) {
   if (!id) throw new Error('id required');
+
+  await checkAppointmentAccess(id, user);
+
   const appt = await prisma.appointment.findUnique({ where: { id } });
 
   if (!appt) throw new Error('Appointment not found');
@@ -485,42 +545,6 @@ export async function confirmAppointment(id: string, patientId: string) {
   const updated = await prisma.appointment.update({
     where: { id },
     data: { status: 'CONFIRMED' } as any,
-  });
-  try {
-    await enqueueCalendarJob({ type: 'update', appointmentId: id });
-  } catch (e) {
-    console.warn('Could not enqueue calendar update job', e);
-  }
-  return updated;
-}
-
-export async function completeAppointment(id: string) {
-  if (!id) throw new Error('id required');
-  const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt) throw new Error('Appointment not found');
-  if ((appt as any).status === 'CANCELLED')
-    throw new Error('Cannot complete a cancelled appointment');
-  const updated = await prisma.appointment.update({
-    where: { id },
-    data: { status: 'COMPLETED' } as any,
-  });
-  try {
-    await enqueueCalendarJob({ type: 'update', appointmentId: id });
-  } catch (e) {
-    console.warn('Could not enqueue calendar update job', e);
-  }
-  return updated;
-}
-
-export async function markNoShow(id: string) {
-  if (!id) throw new Error('id required');
-  const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt) throw new Error('Appointment not found');
-  if ((appt as any).status === 'CANCELLED')
-    throw new Error('Cannot mark a cancelled appointment as no-show');
-  const updated = await prisma.appointment.update({
-    where: { id },
-    data: { status: 'NO_SHOW' } as any,
   });
   try {
     await enqueueCalendarJob({ type: 'update', appointmentId: id });

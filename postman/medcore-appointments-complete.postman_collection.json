@@ -1,0 +1,861 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "MedCore Appointments - Complete API",
+    "description": "Colección completa de endpoints para el servicio medcore-appointment",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345678"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Service Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": [""]
+            },
+            "description": "Verifica que el servicio esté funcionando"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"doctor123\",\n  \"patientId\": \"patient456\",\n  \"startAt\": \"2025-11-15T10:00:00.000Z\",\n  \"endAt\": \"2025-11-15T11:00:00.000Z\",\n  \"reason\": \"Consulta general\",\n  \"notes\": \"Primera consulta\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments"]
+            },
+            "description": "Crea una nueva cita médica"
+          },
+          "response": []
+        },
+        {
+          "name": "List Appointments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments?page=1&limit=10&doctorId=&patientId=&status=",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Límite de resultados"
+                },
+                {
+                  "key": "doctorId",
+                  "value": "",
+                  "description": "Filtrar por ID de doctor"
+                },
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "Filtrar por ID de paciente"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filtrar por estado"
+                }
+              ]
+            },
+            "description": "Lista todas las citas con paginación y filtros"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/disponibilidad?doctorId=doctor123&date=2025-11-15",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", "disponibilidad"],
+              "query": [
+                {
+                  "key": "doctorId",
+                  "value": "doctor123",
+                  "description": "ID del doctor"
+                },
+                {
+                  "key": "date",
+                  "value": "2025-11-15",
+                  "description": "Fecha en formato YYYY-MM-DD"
+                }
+              ]
+            },
+            "description": "Obtiene la disponibilidad de un doctor en una fecha específica"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Appointment by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Obtiene los detalles de una cita específica"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Appointment (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newStartAt\": \"2025-11-16T14:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Reprograma una cita (alias de reprogram)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Appointment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Cancela/elimina una cita (alias de cancel)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Appointment State",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"CONFIRMADA\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/state",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "state"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Cambia el estado de una cita (PENDIENTE, CONFIRMADA, EN_CURSO, COMPLETADA, CANCELADA, NO_ASISTIO)"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Appointment (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Motivo de cancelación\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/cancel",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "cancel"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Cancela una cita (debe ser con al menos 4 horas de anticipación)"
+          },
+          "response": []
+        },
+        {
+          "name": "Reprogram Appointment (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newStartAt\": \"2025-11-16T15:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/reprogram",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "reprogram"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Reprograma una cita a una nueva fecha/hora"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Appointment (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (PACIENTE)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/confirm",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "confirm"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Confirma una cita (requiere rol PACIENTE)"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Appointment (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Cita completada exitosamente\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/complete",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "complete"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Marca una cita como completada"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark No-Show (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/no-show",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "no-show"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Marca una cita como no asistida"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Appointment (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/confirm",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "confirm"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Confirma una cita (alias POST)"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Appointment (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Cita completada\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/complete",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "complete"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Marca una cita como completada (alias POST)"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark No-Show (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/:id/mark-no-show",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", ":id", "mark-no-show"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Marca una cita como no asistida (alias POST)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Templates & Exceptions",
+      "item": [
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"doctor123\",\n  \"dayOfWeek\": 1,\n  \"startTime\": \"09:00\",\n  \"endTime\": \"17:00\",\n  \"slotDuration\": 30\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/templates",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", "templates"]
+            },
+            "description": "Crea una plantilla de disponibilidad para un doctor (lunes=1, domingo=0)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Exception",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"doctor123\",\n  \"date\": \"2025-11-20\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"12:00\",\n  \"isAvailable\": false,\n  \"reason\": \"Vacaciones\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/appointments/exceptions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "appointments", "exceptions"]
+            },
+            "description": "Crea una excepción de disponibilidad para una fecha específica"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Queue (Waiting List)",
+      "item": [
+        {
+          "name": "Join Queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (MEDICO)"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/join?appointmentId=appointment123",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "join"],
+              "query": [
+                {
+                  "key": "appointmentId",
+                  "value": "appointment123",
+                  "description": "ID de la cita"
+                }
+              ]
+            },
+            "description": "Un paciente se une a la cola de espera (requiere rol MEDICO)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (MEDICO)"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/current",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "current"]
+            },
+            "description": "El doctor ve el ticket actual en atención (requiere rol MEDICO)"
+          },
+          "response": []
+        },
+        {
+          "name": "Call Next",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (MEDICO)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/call-next",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "call-next"]
+            },
+            "description": "El doctor llama al siguiente paciente en la cola (requiere rol MEDICO)"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Ticket",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (MEDICO)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/ticket/:ticketId/complete",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "ticket", ":ticketId", "complete"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "ticket123",
+                  "description": "ID del ticket"
+                }
+              ]
+            },
+            "description": "El doctor completa un ticket (requiere rol MEDICO)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Position",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (PACIENTE o MEDICO)"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/ticket/:ticketId/position",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "ticket", ":ticketId", "position"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "ticket123",
+                  "description": "ID del ticket"
+                }
+              ]
+            },
+            "description": "Obtiene la posición de un ticket en la cola"
+          },
+          "response": []
+        },
+        {
+          "name": "List My Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (PACIENTE o MEDICO)"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/me",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "me"]
+            },
+            "description": "Lista los tickets del usuario autenticado"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Ticket No-Show",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token de autenticación (MEDICO)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/queue/ticket/:ticketId/no-show",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "queue", "ticket", ":ticketId", "no-show"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "ticket123",
+                  "description": "ID del ticket"
+                }
+              ]
+            },
+            "description": "Marca un ticket como no asistido (requiere rol MEDICO)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    }
+  ]
+}

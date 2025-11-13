@@ -37,14 +37,19 @@ export async function getAppointmentById(req: Request, res: Response) {
       return;
     }
 
-    const appt = await service.getAppointmentById(id);
+    const appt = await service.getAppointmentById(id, req.user);
     if (!appt) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
     res.json(appt);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const statusCode =
+      err.message === 'Authentication required' ||
+      err.message.includes('Access denied')
+        ? 403
+        : 500;
+    res.status(statusCode).json({ error: err.message });
   }
 }
 
@@ -57,10 +62,15 @@ export async function deleteAppointment(req: Request, res: Response) {
       return;
     }
 
-    const updated = await service.cancelAppointment(id);
+    const updated = await service.cancelAppointment(id, req.user);
     res.json(updated);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode =
+      err.message === 'Authentication required' ||
+      err.message.includes('Access denied')
+        ? 403
+        : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 }
 
@@ -102,23 +112,6 @@ export async function createException(req: Request, res: Response) {
   }
 }
 
-export async function updateAppointmentState(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ error: 'id is required' });
-      return;
-    }
-
-    const { status } = req.body;
-    const updated = await service.updateAppointmentStatus(id, status);
-    res.json(updated);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-}
-
 export async function cancelAppointment(req: Request, res: Response) {
   try {
     const { id } = req.params;
@@ -128,10 +121,15 @@ export async function cancelAppointment(req: Request, res: Response) {
       return;
     }
 
-    const updated = await service.cancelAppointment(id);
+    const updated = await service.cancelAppointment(id, req.user);
     res.json(updated);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode =
+      err.message === 'Authentication required' ||
+      err.message.includes('Access denied')
+        ? 403
+        : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 }
 
@@ -145,10 +143,19 @@ export async function reprogramAppointment(req: Request, res: Response) {
     }
 
     const { newStartAt } = req.body;
-    const updated = await service.reprogramAppointment(id, newStartAt);
+    const updated = await service.reprogramAppointment(
+      id,
+      newStartAt,
+      req.user
+    );
     res.json(updated);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode =
+      err.message === 'Authentication required' ||
+      err.message.includes('Access denied')
+        ? 403
+        : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 }
 
@@ -166,41 +173,18 @@ export async function confirmAppointment(req: Request, res: Response) {
       return;
     }
 
-    const updated = await service.confirmAppointment(id, req.user?.id || '');
+    const updated = await service.confirmAppointment(
+      id,
+      req.user?.id || '',
+      req.user
+    );
     res.json(updated);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-}
-
-export async function completeAppointment(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ error: 'id is required' });
-      return;
-    }
-
-    const updated = await service.completeAppointment(id);
-    res.json(updated);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-}
-
-export async function markNoShow(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ error: 'id is required' });
-      return;
-    }
-
-    const updated = await service.markNoShow(id);
-    res.json(updated);
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode =
+      err.message === 'Authentication required' ||
+      err.message.includes('Access denied')
+        ? 403
+        : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 }
