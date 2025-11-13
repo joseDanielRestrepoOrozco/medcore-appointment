@@ -6,9 +6,11 @@ export async function createAppointment(req: Request, res: Response) {
     const payload = req.body;
 
     const authHeader = String(req.get('authorization') || '');
+    const interpretZ = String(req.get('x-interpret-z-as-local') || '').toLowerCase() === 'true';
     const result = await service.createAppointment(
       payload,
-      authHeader || undefined
+      authHeader || undefined,
+      interpretZ
     );
     res.status(201).json(result);
   } catch (err: any) {
@@ -143,10 +145,12 @@ export async function reprogramAppointment(req: Request, res: Response) {
     }
 
     const { newStartAt } = req.body;
+    const interpretZ = String(req.get('x-interpret-z-as-local') || '').toLowerCase() === 'true';
     const updated = await service.reprogramAppointment(
       id,
       newStartAt,
-      req.user
+      req.user,
+      interpretZ
     );
     res.json(updated);
   } catch (err: any) {

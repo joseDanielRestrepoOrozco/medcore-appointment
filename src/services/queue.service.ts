@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { convertAppointmentToLocal } from '../libs/time.js';
 
 const prisma = new PrismaClient();
 
@@ -27,7 +28,7 @@ export async function join(doctorId: string) {
     // IN_PROGRESS appointments get position 0 (currently being attended)
     const position = appointment.status === 'IN_PROGRESS' ? 0 : index + 1;
     return {
-      ...appointment,
+      ...convertAppointmentToLocal(appointment),
       position,
     };
   });
@@ -53,7 +54,7 @@ export async function getCurrentForDoctor(doctorId: string) {
       startAt: 'asc',
     },
   });
-  return current;
+  return convertAppointmentToLocal(current as any);
 }
 
 /**
@@ -121,7 +122,7 @@ export async function callNext(doctorId: string) {
       });
 
       return {
-        appointment: calledAppointment,
+        appointment: convertAppointmentToLocal(calledAppointment as any),
         waiting,
       };
     }
@@ -202,7 +203,7 @@ export async function getAppointmentPosition(appointmentId: string) {
   });
 
   return {
-    appointment,
+    appointment: convertAppointmentToLocal(appointment as any),
     position: positionBefore + 1,
   };
 }
@@ -215,17 +216,19 @@ export async function getAppointmentPosition(appointmentId: string) {
  */
 export async function getAppointmentsForUser(userId: string, role: string) {
   if (String(role).toUpperCase() === 'MEDICO') {
-    return prisma.appointment.findMany({
+    const appts = await prisma.appointment.findMany({
       where: { doctorId: userId },
       orderBy: { startAt: 'asc' },
     });
+    return appts.map(a => convertAppointmentToLocal(a));
   }
 
   // Default: PACIENTE
-  return prisma.appointment.findMany({
+  const appts = await prisma.appointment.findMany({
     where: { patientId: userId },
     orderBy: { startAt: 'asc' },
   });
+  return appts.map(a => convertAppointmentToLocal(a));
 }
 
 /**
@@ -254,5 +257,5 @@ export async function markNoShow(appointmentId: string, doctorId: string) {
     data: { status: 'NO_SHOW' },
   });
 
-  return updated;
+  return convertAppointmentToLocal(updated as any);
 }
