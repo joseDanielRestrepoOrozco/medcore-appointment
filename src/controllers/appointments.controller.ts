@@ -280,7 +280,7 @@ export const reprogramAppointment = async (req: Request, res: Response) => {
 export const getMyAppointments = async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const appointments = await service.getAppointmentsByPatientId(
+    const appointments = await service.getAppointmentsByUserId(
       user?.id ?? ''
     );
     res.json(appointments);
