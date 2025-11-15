@@ -53,27 +53,6 @@ export async function getAppointmentById(req: Request, res: Response) {
   }
 }
 
-export async function deleteAppointment(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({ error: 'id is required' });
-      return;
-    }
-
-    const updated = await service.cancelAppointment(id, req.user);
-    res.json(updated);
-  } catch (err: any) {
-    const statusCode =
-      err.message === 'Authentication required' ||
-      err.message.includes('Access denied')
-        ? 403
-        : 400;
-    res.status(statusCode).json({ error: err.message });
-  }
-}
-
 export async function getAvailability(req: Request, res: Response) {
   try {
     const { doctor_id, fecha } = req.query as any;

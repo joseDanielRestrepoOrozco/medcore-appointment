@@ -52,9 +52,6 @@ router.get('/:id', authenticateUser(), controller.getAppointmentById);
 // Reprogramar usando PUT /:id (alias a reprogram) (requiere autenticación)
 router.put('/:id', authenticateUser(), controller.reprogramAppointment);
 
-// Borrar / cancelar cita usando DELETE (alias a cancel) (requiere autenticación)
-router.delete('/:id', authenticateUser(), controller.deleteAppointment);
-
 // Cambiar estado de una cita (requiere autenticación)
 // Cancelar una cita (>=4h antes) (requiere autenticación)
 router.patch('/:id/cancel', authenticateUser(), controller.cancelAppointment);
@@ -72,8 +69,5 @@ router.patch(
   requireRoles(['PACIENTE']),
   controller.confirmAppointment
 );
-
-// POST aliases (semántica solicitada)
-router.post('/:id/confirm', controller.confirmAppointment);
 
 export default router;
