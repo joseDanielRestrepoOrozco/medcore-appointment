@@ -49,9 +49,6 @@ router.post('/exceptions', controller.createException);
 // Obtener cita por id (requiere autenticación)
 router.get('/:id', authenticateUser(), controller.getAppointmentById);
 
-// Reprogramar usando PUT /:id (alias a reprogram) (requiere autenticación)
-router.put('/:id', authenticateUser(), controller.reprogramAppointment);
-
 // Cambiar estado de una cita (requiere autenticación)
 // Cancelar una cita (>=4h antes) (requiere autenticación)
 router.patch('/:id/cancel', authenticateUser(), controller.cancelAppointment);
