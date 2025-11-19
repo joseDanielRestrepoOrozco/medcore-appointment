@@ -1,10 +1,10 @@
-import { PrismaClient, AppointmentStatus } from '@prisma/client';
-import { DateTime } from 'luxon';
-import usersClient from '../libs/usersClient.js';
-import { DEFAULT_TIMEZONE } from '../libs/config.js';
-import redlock from '../libs/lock.js';
-import { enqueueCalendarJob } from '../libs/queue.js';
-import type { UserPayload } from '../types/express.js';
+import { PrismaClient, AppointmentStatus } from "@prisma/client";
+import { DateTime } from "luxon";
+import usersClient from "../libs/usersClient.js";
+import { DEFAULT_TIMEZONE } from "../libs/config.js";
+import redlock from "../libs/lock.js";
+import { enqueueCalendarJob } from "../libs/queue.js";
+import type { UserPayload } from "../types/express.js";
 
 const prisma = new PrismaClient();
 
@@ -13,11 +13,11 @@ async function checkAppointmentAccess(
   user?: UserPayload
 ): Promise<void> {
   if (!user) {
-    throw new Error('Authentication required');
+    throw new Error("Authentication required");
   }
 
   // Admin can access everything
-  if (user.role === 'ADMIN') {
+  if (user.role === "ADMIN") {
     return;
   }
 
@@ -27,7 +27,7 @@ async function checkAppointmentAccess(
   });
 
   if (!appointment) {
-    throw new Error('Appointment not found');
+    throw new Error("Appointment not found");
   }
 
   // Check if user is the patient or the doctor
@@ -36,7 +36,7 @@ async function checkAppointmentAccess(
 
   if (!isPatient && !isDoctor) {
     throw new Error(
-      'Access denied: you do not have permission to access this appointment'
+      "Access denied: you do not have permission to access this appointment"
     );
   }
 }
@@ -63,29 +63,29 @@ export async function createAppointment(
     reason,
   } = payload;
   if (!patientId || !doctorId || !startAt)
-    throw new Error('patientId, doctorId and startAt are required');
+    throw new Error("patientId, doctorId and startAt are required");
 
   // Enforce fixed duration
-  if (duration !== 30) throw new Error('Duration must be exactly 30 minutes');
+  if (duration !== 30) throw new Error("Duration must be exactly 30 minutes");
 
-  const zone = DEFAULT_TIMEZONE || 'America/Bogota';
-  const rawStart = String(startAt || '');
+  const zone = DEFAULT_TIMEZONE || "America/Bogota";
+  const rawStart = String(startAt || "");
   // Normalize: interpret incoming value as wall-clock in DEFAULT_TIMEZONE.
   // Strip trailing Z if present so the provided hour is preserved.
-  const startToParse = rawStart.replace(/Z$/i, '');
+  const startToParse = rawStart.replace(/Z$/i, "");
   const startLocal = DateTime.fromISO(startToParse, { zone });
-  if (!startLocal.isValid) throw new Error('Invalid startAt date');
+  if (!startLocal.isValid) throw new Error("Invalid startAt date");
 
   // Do not allow scheduling in the past
   const nowLocal = DateTime.now().setZone(zone);
   if (startLocal <= nowLocal)
-    throw new Error('Cannot schedule appointments in the past');
+    throw new Error("Cannot schedule appointments in the past");
 
   // Slot alignment: minutes should be 0 or 30
   const minute = startLocal.minute;
   if (!(minute === 0 || minute === 30))
     throw new Error(
-      'startAt must be aligned to 30-minute slots (minutes must be 00 or 30)'
+      "startAt must be aligned to 30-minute slots (minutes must be 00 or 30)"
     );
 
   // Validate doctor and patient exist (note: inter-service auth handled externally)
@@ -94,7 +94,7 @@ export async function createAppointment(
   // Allow skipping user validation in development by setting SKIP_USER_VALIDATION=true
   let doctorExists = false;
   let patientExists = false;
-  if (process.env.SKIP_USER_VALIDATION === 'true') {
+  if (process.env.SKIP_USER_VALIDATION === "true") {
     doctorExists = true;
     patientExists = true;
   } else {
@@ -105,8 +105,8 @@ export async function createAppointment(
         .catch(() => false),
     ]);
   }
-  if (!doctorExists) throw new Error('Doctor not found');
-  if (!patientExists) throw new Error('Patient not found');
+  if (!doctorExists) throw new Error("Doctor not found");
+  if (!patientExists) throw new Error("Patient not found");
 
   const startUTC = startLocal.toUTC();
   const endUTC = startUTC.plus({ minutes: duration });
@@ -120,7 +120,7 @@ export async function createAppointment(
     // Compare ISO forms (with offset) to be robust
     const requestedIso = startLocal.toISO();
     if (!availableSlots.includes(requestedIso)) {
-      throw new Error('Doctor is not available at the requested time');
+      throw new Error("Doctor is not available at the requested time");
     }
   } catch (e) {
     // If getAvailability throws, propagate as validation error
@@ -131,14 +131,14 @@ export async function createAppointment(
   const resources = [`locks:doctor:${doctorId}`, `locks:patient:${patientId}`];
   const ttl = 10000; // 10s
   const lock = await redlock.acquire(resources, ttl).catch(() => null);
-  if (!lock) throw new Error('Could not acquire lock, try again');
+  if (!lock) throw new Error("Could not acquire lock, try again");
 
   try {
     // Check overlap for the doctor (exclude CANCELLED)
     const doctorConflict = await prisma.appointment.findFirst({
       where: {
         doctorId,
-        status: { not: 'CANCELLED' },
+        status: { not: "CANCELLED" },
         AND: [
           { startAt: { lt: endUTC.toJSDate() } },
           { endAt: { gt: startUTC.toJSDate() } },
@@ -147,14 +147,14 @@ export async function createAppointment(
     });
     if (doctorConflict)
       throw new Error(
-        'Appointment overlaps with an existing one for this doctor'
+        "Appointment overlaps with an existing one for this doctor"
       );
 
     // Check overlap for the patient (exclude CANCELLED)
     const patientConflict = await prisma.appointment.findFirst({
       where: {
         patientId,
-        status: { not: 'CANCELLED' },
+        status: { not: "CANCELLED" },
         AND: [
           { startAt: { lt: endUTC.toJSDate() } },
           { endAt: { gt: startUTC.toJSDate() } },
@@ -163,7 +163,7 @@ export async function createAppointment(
     });
     if (patientConflict)
       throw new Error(
-        'Patient has a conflicting appointment in that time range'
+        "Patient has a conflicting appointment in that time range"
       );
 
     // Limit: max 3 upcoming active appointments per patient
@@ -181,7 +181,7 @@ export async function createAppointment(
     });
     if (upcomingCount >= 3)
       throw new Error(
-        'Patient has reached the maximum number of active upcoming appointments (3)'
+        "Patient has reached the maximum number of active upcoming appointments (3)"
       );
 
     const created = await prisma.appointment.create({
@@ -202,11 +202,11 @@ export async function createAppointment(
     // Encolar sincronización con calendario (asíncrona)
     try {
       await enqueueCalendarJob({
-        type: 'create',
+        type: "create",
         appointmentId: (created as any).id,
       });
     } catch (e) {
-      console.warn('Could not enqueue calendar job', e);
+      console.warn("Could not enqueue calendar job", e);
     }
 
     // Convert stored UTC dates back to default timezone for API consumers
@@ -230,9 +230,9 @@ export async function createAppointment(
   } finally {
     try {
       if (lock) {
-        if (typeof (lock as any).release === 'function')
+        if (typeof (lock as any).release === "function")
           await (lock as any).release();
-        else if (typeof (lock as any).unlock === 'function')
+        else if (typeof (lock as any).unlock === "function")
           await (lock as any).unlock();
       }
     } catch (e) {
@@ -249,14 +249,14 @@ export async function getAppointmentById(id: string, user?: UserPayload) {
 
 export async function listAppointments() {
   const appts = await prisma.appointment.findMany({
-    orderBy: { startAt: 'asc' },
+    orderBy: { startAt: "asc" },
   } as any);
   return appts;
 }
 
 export async function getAvailability(doctorId: string, dateISO: string) {
-  const date = DateTime.fromISO(dateISO, { zone: 'America/Bogota' });
-  if (!date.isValid) throw new Error('Invalid date');
+  const date = DateTime.fromISO(dateISO, { zone: "America/Bogota" });
+  if (!date.isValid) throw new Error("Invalid date");
 
   const dayOfWeek = date.weekday % 7; // Luxon: 1=Mon..7=Sun -> convert to 0=Sun..6
 
@@ -266,19 +266,19 @@ export async function getAvailability(doctorId: string, dateISO: string) {
   });
 
   // Fetch exceptions for that date
-  const startOfDay = date.startOf('day').toJSDate();
+  const startOfDay = date.startOf("day").toJSDate();
   const exceptions = await prisma.scheduleException.findMany({
     where: { doctorId, date: startOfDay },
   });
 
   // Fetch existing appointments for that doctor on that day
-  const dayStartUTC = date.startOf('day').toUTC().toJSDate();
-  const dayEndUTC = date.endOf('day').toUTC().toJSDate();
+  const dayStartUTC = date.startOf("day").toUTC().toJSDate();
+  const dayEndUTC = date.endOf("day").toUTC().toJSDate();
   const appointments = await prisma.appointment.findMany({
     where: {
       doctorId,
       AND: [{ startAt: { gte: dayStartUTC } }, { startAt: { lte: dayEndUTC } }],
-      status: { not: 'CANCELLED' },
+      status: { not: "CANCELLED" },
     } as any,
   });
 
@@ -287,8 +287,8 @@ export async function getAvailability(doctorId: string, dateISO: string) {
   // For each template build slots
   for (const tpl of templates) {
     // tpl.startTime / tpl.endTime are "HH:MM" in local timezone
-    const [sh, sm] = tpl.startTime.split(':').map(Number);
-    const [eh, em] = tpl.endTime.split(':').map(Number);
+    const [sh, sm] = tpl.startTime.split(":").map(Number);
+    const [eh, em] = tpl.endTime.split(":").map(Number);
 
     let slotStart = date.set({
       hour: sh,
@@ -310,11 +310,11 @@ export async function getAvailability(doctorId: string, dateISO: string) {
       const utcEnd = slotEnd.toUTC().toJSDate();
 
       const isBlockedByException = exceptions.some(
-        exc => exc.isBlocked && (!exc.startTime || !exc.endTime)
+        (exc) => exc.isBlocked && (!exc.startTime || !exc.endTime)
       );
 
       const overlapsAppt = appointments.some(
-        a => (a as any).startAt < utcEnd && (a as any).endAt > utcStart
+        (a) => (a as any).startAt < utcEnd && (a as any).endAt > utcStart
       );
 
       if (!isBlockedByException && !overlapsAppt) {
@@ -336,22 +336,22 @@ export async function createTemplate(payload: {
   endTime: string;
 }) {
   const { doctorId, dayOfWeek, startTime, endTime } = payload;
-  if (!doctorId) throw new Error('doctorId required');
+  if (!doctorId) throw new Error("doctorId required");
 
   // Validate dayOfWeek (0=Sunday, 6=Saturday)
   if (dayOfWeek < 0 || dayOfWeek > 6) {
-    throw new Error('dayOfWeek must be between 0 (Sunday) and 6 (Saturday)');
+    throw new Error("dayOfWeek must be between 0 (Sunday) and 6 (Saturday)");
   }
 
   // Validate time format (HH:MM)
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
-    throw new Error('Time format must be HH:MM (e.g., 08:00, 17:30)');
+    throw new Error("Time format must be HH:MM (e.g., 08:00, 17:30)");
   }
 
   // Validate endTime > startTime
   if (startTime >= endTime) {
-    throw new Error('endTime must be greater than startTime');
+    throw new Error("endTime must be greater than startTime");
   }
 
   return (prisma as any).scheduleTemplate.create({
@@ -360,11 +360,11 @@ export async function createTemplate(payload: {
 }
 
 export async function getTemplatesByDoctor(doctorId: string) {
-  if (!doctorId) throw new Error('doctorId required');
+  if (!doctorId) throw new Error("doctorId required");
 
   return prisma.scheduleTemplate.findMany({
     where: { doctorId },
-    orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+    orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
   });
 }
 
@@ -377,8 +377,8 @@ export async function updateTemplate(
     endTime?: string;
   }
 ) {
-  if (!templateId) throw new Error('templateId required');
-  if (!doctorId) throw new Error('doctorId required');
+  if (!templateId) throw new Error("templateId required");
+  if (!doctorId) throw new Error("doctorId required");
 
   // Check if template exists and belongs to the doctor
   const existingTemplate = await prisma.scheduleTemplate.findUnique({
@@ -386,11 +386,11 @@ export async function updateTemplate(
   });
 
   if (!existingTemplate) {
-    throw new Error('Template not found');
+    throw new Error("Template not found");
   }
 
   if (existingTemplate.doctorId !== doctorId) {
-    throw new Error('Access denied: You can only update your own templates');
+    throw new Error("Access denied: You can only update your own templates");
   }
 
   // Validate dayOfWeek if provided
@@ -398,16 +398,16 @@ export async function updateTemplate(
     payload.dayOfWeek !== undefined &&
     (payload.dayOfWeek < 0 || payload.dayOfWeek > 6)
   ) {
-    throw new Error('dayOfWeek must be between 0 (Sunday) and 6 (Saturday)');
+    throw new Error("dayOfWeek must be between 0 (Sunday) and 6 (Saturday)");
   }
 
   // Validate time format if provided
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   if (payload.startTime && !timeRegex.test(payload.startTime)) {
-    throw new Error('startTime format must be HH:MM (e.g., 08:00)');
+    throw new Error("startTime format must be HH:MM (e.g., 08:00)");
   }
   if (payload.endTime && !timeRegex.test(payload.endTime)) {
-    throw new Error('endTime format must be HH:MM (e.g., 17:30)');
+    throw new Error("endTime format must be HH:MM (e.g., 17:30)");
   }
 
   // Get the final times to validate
@@ -415,7 +415,7 @@ export async function updateTemplate(
   const finalEndTime = payload.endTime ?? existingTemplate.endTime;
 
   if (finalStartTime >= finalEndTime) {
-    throw new Error('endTime must be greater than startTime');
+    throw new Error("endTime must be greater than startTime");
   }
 
   return prisma.scheduleTemplate.update({
@@ -425,8 +425,8 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(templateId: string, doctorId: string) {
-  if (!templateId) throw new Error('templateId required');
-  if (!doctorId) throw new Error('doctorId required');
+  if (!templateId) throw new Error("templateId required");
+  if (!doctorId) throw new Error("doctorId required");
 
   // Check if template exists and belongs to the doctor
   const existingTemplate = await (prisma as any).scheduleTemplate.findUnique({
@@ -434,11 +434,11 @@ export async function deleteTemplate(templateId: string, doctorId: string) {
   });
 
   if (!existingTemplate) {
-    throw new Error('Template not found');
+    throw new Error("Template not found");
   }
 
   if (existingTemplate.doctorId !== doctorId) {
-    throw new Error('Access denied: You can only delete your own templates');
+    throw new Error("Access denied: You can only delete your own templates");
   }
 
   return (prisma as any).scheduleTemplate.delete({
@@ -462,9 +462,9 @@ export async function createException(payload: {
     isBlocked = true,
     reason,
   } = payload;
-  if (!doctorId || !date) throw new Error('doctorId and date required');
-  const dateObj = DateTime.fromISO(date, { zone: 'America/Bogota' })
-    .startOf('day')
+  if (!doctorId || !date) throw new Error("doctorId and date required");
+  const dateObj = DateTime.fromISO(date, { zone: "America/Bogota" })
+    .startOf("day")
     .toJSDate();
   return (prisma as any).scheduleException.create({
     data: { doctorId, date: dateObj, startTime, endTime, isBlocked, reason },
@@ -476,18 +476,18 @@ async function updateAppointmentStatus(
   status: string,
   user?: UserPayload
 ) {
-  if (!id || !status) throw new Error('id and status required');
+  if (!id || !status) throw new Error("id and status required");
 
   await checkAppointmentAccess(id, user);
 
   const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt) throw new Error('Appointment not found');
+  if (!appt) throw new Error("Appointment not found");
 
   // Allowed transitions map
   const transitions: Record<string, string[]> = {
-    SCHEDULED: ['CONFIRMED', 'CANCELLED', 'IN_PROGRESS'],
-    CONFIRMED: ['IN_PROGRESS', 'CANCELLED'],
-    IN_PROGRESS: ['COMPLETED', 'NO_SHOW'],
+    SCHEDULED: ["CONFIRMED", "CANCELLED", "IN_PROGRESS"],
+    CONFIRMED: ["IN_PROGRESS", "CANCELLED"],
+    IN_PROGRESS: ["COMPLETED", "NO_SHOW"],
     COMPLETED: [],
     CANCELLED: [],
     NO_SHOW: [],
@@ -505,35 +505,35 @@ async function updateAppointmentStatus(
     data: { status: desired } as any,
   });
   try {
-    await enqueueCalendarJob({ type: 'update', appointmentId: id });
+    await enqueueCalendarJob({ type: "update", appointmentId: id });
   } catch (e) {
-    console.warn('Could not enqueue calendar update job', e);
+    console.warn("Could not enqueue calendar update job", e);
   }
   return updated;
 }
 
 export async function cancelAppointment(id: string, user?: UserPayload) {
-  if (!id) throw new Error('id required');
+  if (!id) throw new Error("id required");
 
   await checkAppointmentAccess(id, user);
 
   const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt) throw new Error('Appointment not found');
+  if (!appt) throw new Error("Appointment not found");
 
-  const zone = DEFAULT_TIMEZONE || 'America/Bogota';
+  const zone = DEFAULT_TIMEZONE || "America/Bogota";
   const startLocal = DateTime.fromJSDate((appt as any).startAt).setZone(zone);
   const nowLocal = DateTime.now().setZone(zone);
 
   // Must cancel at least 4 hours before start
-  const hoursDiff = startLocal.diff(nowLocal, 'hours').hours;
+  const hoursDiff = startLocal.diff(nowLocal, "hours").hours;
   if (hoursDiff < 4)
     throw new Error(
-      'Cancellations must be made at least 4 hours before the appointment'
+      "Solo puede cancelar la cita con al menos 4 horas de anticipación"
     );
 
   // Use the state-machine validation implemented in updateAppointmentStatus
   // This enforces allowed transitions and also enqueues calendar jobs
-  const updated = await updateAppointmentStatus(id, 'CANCELLED', user);
+  const updated = await updateAppointmentStatus(id, "CANCELLED", user);
   return updated;
 }
 
@@ -542,39 +542,39 @@ export async function reprogramAppointment(
   newStartAt: string,
   user?: UserPayload
 ) {
-  if (!id || !newStartAt) throw new Error('id and newStartAt required');
+  if (!id || !newStartAt) throw new Error("id and newStartAt required");
 
   await checkAppointmentAccess(id, user);
 
   const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt) throw new Error('Appointment not found');
+  if (!appt) throw new Error("Appointment not found");
 
-  const zone = DEFAULT_TIMEZONE || 'America/Bogota';
+  const zone = DEFAULT_TIMEZONE || "America/Bogota";
   const nowLocal = DateTime.now().setZone(zone);
   const originalStartLocal = DateTime.fromJSDate((appt as any).startAt).setZone(
     zone
   );
 
   // Reprogramming requests must be made at least 24 hours before the original appointment
-  const hoursBeforeOriginal = originalStartLocal.diff(nowLocal, 'hours').hours;
+  const hoursBeforeOriginal = originalStartLocal.diff(nowLocal, "hours").hours;
   if (hoursBeforeOriginal < 24)
     throw new Error(
-      'Reprogramming must be requested at least 24 hours before the appointment'
+      "Solo puede reprogramar la cita con al menos 24 horas de anticipación"
     );
 
-  const rawNew = String(newStartAt || '');
+  const rawNew = String(newStartAt || "");
   // Normalize: interpret incoming value as wall-clock in DEFAULT_TIMEZONE.
-  const newToParse = rawNew.replace(/Z$/i, '');
+  const newToParse = rawNew.replace(/Z$/i, "");
   const newStartLocal = DateTime.fromISO(newToParse, { zone });
-  if (!newStartLocal.isValid) throw new Error('Invalid newStartAt date');
+  if (!newStartLocal.isValid) throw new Error("Invalid newStartAt date");
   if (newStartLocal <= nowLocal)
-    throw new Error('New start must be in the future');
+    throw new Error("New start must be in the future");
 
   // New start must align to 00 or 30
   const minute = newStartLocal.minute;
   if (!(minute === 0 || minute === 30))
     throw new Error(
-      'newStartAt must be aligned to 30-minute slots (minutes must be 00 or 30)'
+      "newStartAt must be aligned to 30-minute slots (minutes must be 00 or 30)"
     );
 
   const duration = (appt as any).duration || 30;
@@ -586,7 +586,7 @@ export async function reprogramAppointment(
     where: {
       doctorId: (appt as any).doctorId,
       id: { not: id },
-      status: { not: 'CANCELLED' },
+      status: { not: "CANCELLED" },
       AND: [
         { startAt: { lt: newEndUTC.toJSDate() } },
         { endAt: { gt: newStartUTC.toJSDate() } },
@@ -595,14 +595,14 @@ export async function reprogramAppointment(
   });
   if (doctorConflict)
     throw new Error(
-      'New time overlaps with existing appointment for this doctor'
+      "New time overlaps with existing appointment for this doctor"
     );
 
   const patientConflict = await prisma.appointment.findFirst({
     where: {
       patientId: (appt as any).patientId,
       id: { not: id },
-      status: { not: 'CANCELLED' },
+      status: { not: "CANCELLED" },
       AND: [
         { startAt: { lt: newEndUTC.toJSDate() } },
         { endAt: { gt: newStartUTC.toJSDate() } },
@@ -611,7 +611,7 @@ export async function reprogramAppointment(
   });
   if (patientConflict)
     throw new Error(
-      'New time overlaps with existing appointment for this patient'
+      "New time overlaps with existing appointment for this patient"
     );
 
   // ensure patient won't exceed 3 active upcoming appointments
@@ -630,7 +630,7 @@ export async function reprogramAppointment(
   });
   if (upcomingCount >= 3)
     throw new Error(
-      'Patient has reached the maximum number of active upcoming appointments (3)'
+      "Patient has reached the maximum number of active upcoming appointments (3)"
     );
 
   const updated = await prisma.appointment.update({
@@ -644,9 +644,9 @@ export async function reprogramAppointment(
     } as any,
   });
   try {
-    await enqueueCalendarJob({ type: 'update', appointmentId: id });
+    await enqueueCalendarJob({ type: "update", appointmentId: id });
   } catch (e) {
-    console.warn('Could not enqueue calendar update job', e);
+    console.warn("Could not enqueue calendar update job", e);
   }
   return updated;
 }
@@ -656,30 +656,30 @@ export async function confirmAppointment(
   patientId: string,
   user?: UserPayload
 ) {
-  if (!id) throw new Error('id required');
+  if (!id) throw new Error("id required");
 
   await checkAppointmentAccess(id, user);
 
   const appt = await prisma.appointment.findUnique({ where: { id } });
 
-  if (!appt) throw new Error('Appointment not found');
-  if ((appt as any).status === 'CANCELLED')
-    throw new Error('Cannot confirm a cancelled appointment');
+  if (!appt) throw new Error("Appointment not found");
+  if ((appt as any).status === "CANCELLED")
+    throw new Error("Cannot confirm a cancelled appointment");
 
-  if ((appt as any).status === 'CONFIRMED') return appt;
+  if ((appt as any).status === "CONFIRMED") return appt;
 
   if (appt.patientId !== patientId) {
-    throw new Error('Patient ID does not match appointment');
+    throw new Error("Patient ID does not match appointment");
   }
 
   const updated = await prisma.appointment.update({
     where: { id },
-    data: { status: 'CONFIRMED' } as any,
+    data: { status: "CONFIRMED" } as any,
   });
   try {
-    await enqueueCalendarJob({ type: 'update', appointmentId: id });
+    await enqueueCalendarJob({ type: "update", appointmentId: id });
   } catch (e) {
-    console.warn('Could not enqueue calendar update job', e);
+    console.warn("Could not enqueue calendar update job", e);
   }
   return updated;
 }
@@ -687,10 +687,7 @@ export async function confirmAppointment(
 export const getAppointmentsByUserId = async (userId: string) => {
   const appts = await prisma.appointment.findMany({
     where: {
-      OR: [
-        { patientId: userId },
-        { doctorId: userId }
-      ]
+      OR: [{ patientId: userId }, { doctorId: userId }],
     },
   });
   return appts;

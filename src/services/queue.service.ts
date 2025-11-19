@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -14,18 +14,18 @@ export async function join(doctorId: string) {
     where: {
       doctorId,
       status: {
-        in: ['CONFIRMED', 'IN_PROGRESS'],
+        in: ["CONFIRMED", "IN_PROGRESS"],
       },
     },
     orderBy: {
-      startAt: 'asc',
+      startAt: "asc",
     },
   });
 
   // Add position to each appointment (only CONFIRMED ones get a position number)
   const queue = appointments.map((appointment, index) => {
     // IN_PROGRESS appointments get position 0 (currently being attended)
-    const position = appointment.status === 'IN_PROGRESS' ? 0 : index + 1;
+    const position = appointment.status === "IN_PROGRESS" ? 0 : index + 1;
     return {
       ...appointment,
       position,
@@ -43,17 +43,40 @@ export async function join(doctorId: string) {
  * @param doctorId - The doctor's ID
  * @returns The appointment currently IN_PROGRESS, or null
  */
+
 export async function getCurrentForDoctor(doctorId: string) {
   const current = await prisma.appointment.findFirst({
     where: {
       doctorId,
-      status: 'IN_PROGRESS',
+      status: "IN_PROGRESS",
     },
     orderBy: {
-      startAt: 'asc',
+      startAt: "asc",
     },
   });
-  return current;
+
+  // Get pause status
+  const pauseStatus = await getDoctorPauseStatus(doctorId);
+
+  // Get waiting patients
+  const waitingPatients = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      status: "CONFIRMED",
+    },
+    orderBy: {
+      startAt: "asc",
+    },
+  });
+
+  return {
+    doctorId,
+    isPaused: pauseStatus.isPaused,
+    pausedAt: (pauseStatus as any).pausedAt || null,
+    queueSize: waitingPatients.length,
+    currentPatient: current,
+    waitingPatients,
+  };
 }
 
 /**
@@ -66,17 +89,22 @@ export async function getCurrentForDoctor(doctorId: string) {
  * @returns The called appointment and count of waiting appointments, or null if none
  */
 export async function callNext(doctorId: string) {
+  const pauseStatus = await getDoctorPauseStatus(doctorId);
+  if (pauseStatus.isPaused) {
+    throw new Error("DOCTOR_PAUSED");
+  }
+
   // First, check if there's already an appointment IN_PROGRESS
   const inProgress = await prisma.appointment.findFirst({
     where: {
       doctorId,
-      status: 'IN_PROGRESS',
+      status: "IN_PROGRESS",
     },
   });
 
   if (inProgress) {
     throw new Error(
-      'Cannot call next: there is already an appointment in progress'
+      "Cannot call next: there is already an appointment in progress"
     );
   }
 
@@ -87,10 +115,10 @@ export async function callNext(doctorId: string) {
     const next = await prisma.appointment.findFirst({
       where: {
         doctorId,
-        status: 'CONFIRMED',
+        status: "CONFIRMED",
       },
       orderBy: {
-        startAt: 'asc',
+        startAt: "asc",
       },
     });
 
@@ -100,10 +128,10 @@ export async function callNext(doctorId: string) {
     const updated = await prisma.appointment.updateMany({
       where: {
         id: next.id,
-        status: 'CONFIRMED',
+        status: "CONFIRMED",
       },
       data: {
-        status: 'IN_PROGRESS',
+        status: "IN_PROGRESS",
       },
     });
 
@@ -116,7 +144,7 @@ export async function callNext(doctorId: string) {
       const waiting = await prisma.appointment.count({
         where: {
           doctorId,
-          status: 'CONFIRMED',
+          status: "CONFIRMED",
         },
       });
 
@@ -144,20 +172,20 @@ export async function completeAppointment(appointmentId: string) {
   });
 
   if (!appointment) {
-    throw new Error('Appointment not found');
+    throw new Error("Appointment not found");
   }
 
-  if (appointment.status !== 'IN_PROGRESS') {
-    throw new Error('Can only complete appointments that are IN_PROGRESS');
+  if (appointment.status !== "IN_PROGRESS") {
+    throw new Error("Can only complete appointments that are IN_PROGRESS");
   }
 
   const updated = await prisma.appointment.updateMany({
     where: {
       id: appointmentId,
-      status: 'IN_PROGRESS',
+      status: "IN_PROGRESS",
     },
     data: {
-      status: 'COMPLETED',
+      status: "COMPLETED",
     },
   });
 
@@ -179,16 +207,16 @@ export async function getAppointmentPosition(appointmentId: string) {
   if (!appointment) return null;
 
   // Only CONFIRMED appointments have a position in queue
-  if (appointment.status !== 'CONFIRMED') {
+  if (appointment.status !== "CONFIRMED") {
     return {
       appointment,
       position: 0,
       message:
-        appointment.status === 'IN_PROGRESS'
-          ? 'Appointment is currently being attended'
-          : appointment.status === 'COMPLETED'
-          ? 'Appointment has been completed'
-          : 'Appointment must be CONFIRMED to have a queue position',
+        appointment.status === "IN_PROGRESS"
+          ? "Appointment is currently being attended"
+          : appointment.status === "COMPLETED"
+          ? "Appointment has been completed"
+          : "Appointment must be CONFIRMED to have a queue position",
     };
   }
 
@@ -196,7 +224,7 @@ export async function getAppointmentPosition(appointmentId: string) {
   const positionBefore = await prisma.appointment.count({
     where: {
       doctorId: appointment.doctorId,
-      status: 'CONFIRMED',
+      status: "CONFIRMED",
       startAt: { lt: appointment.startAt },
     },
   });
@@ -214,17 +242,17 @@ export async function getAppointmentPosition(appointmentId: string) {
  * @returns List of appointments ordered by startAt
  */
 export async function getAppointmentsForUser(userId: string, role: string) {
-  if (String(role).toUpperCase() === 'MEDICO') {
+  if (String(role).toUpperCase() === "MEDICO") {
     return prisma.appointment.findMany({
       where: { doctorId: userId },
-      orderBy: { startAt: 'asc' },
+      orderBy: { startAt: "asc" },
     });
   }
 
   // Default: PACIENTE
   return prisma.appointment.findMany({
     where: { patientId: userId },
-    orderBy: { startAt: 'asc' },
+    orderBy: { startAt: "asc" },
   });
 }
 
@@ -240,18 +268,18 @@ export async function markNoShow(appointmentId: string, doctorId: string) {
   });
 
   if (!appointment) {
-    throw new Error('Appointment not found');
+    throw new Error("Appointment not found");
   }
 
-  if (appointment.status !== 'IN_PROGRESS') {
+  if (appointment.status !== "IN_PROGRESS") {
     throw new Error(
-      'Can only mark as NO_SHOW appointments that are IN_PROGRESS'
+      "Can only mark as NO_SHOW appointments that are IN_PROGRESS"
     );
   }
 
   const updated = await prisma.appointment.update({
     where: { id: appointmentId },
-    data: { status: 'NO_SHOW' },
+    data: { status: "NO_SHOW" },
   });
 
   return updated;
@@ -280,9 +308,38 @@ export async function getAppointmentsByDate(doctorId: string, date: string) {
       },
     },
     orderBy: {
-      startAt: 'asc',
+      startAt: "asc",
     },
   });
 
   return appointments;
+}
+
+export async function toggleDoctorPause(doctorId: string, isPaused: boolean) {
+  const now = new Date();
+
+  const status = await prisma.doctorQueueStatus.upsert({
+    where: { doctorId },
+    create: {
+      doctorId,
+      isPaused,
+      pausedAt: isPaused ? now : null,
+      resumedAt: !isPaused ? now : null,
+    },
+    update: {
+      isPaused,
+      pausedAt: isPaused ? now : undefined,
+      resumedAt: !isPaused ? now : undefined,
+    },
+  });
+
+  return status;
+}
+
+export async function getDoctorPauseStatus(doctorId: string) {
+  const status = await prisma.doctorQueueStatus.findUnique({
+    where: { doctorId },
+  });
+
+  return status || { doctorId, isPaused: false };
 }

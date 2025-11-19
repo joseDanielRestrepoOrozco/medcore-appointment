@@ -1,5 +1,5 @@
-import { type Request, type Response } from 'express';
-import * as service from '../services/queue.service.js';
+import { type Request, type Response } from "express";
+import * as service from "../services/queue.service.js";
 
 /**
  * POST /api/queue/join
@@ -10,7 +10,7 @@ export async function join(req: Request, res: Response) {
     const user = req.user;
 
     if (!user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const result = await service.join(user.id);
@@ -19,10 +19,10 @@ export async function join(req: Request, res: Response) {
       total: result.total,
     });
   } catch (err: any) {
-    console.error('[queue.join] error', err);
+    console.error("[queue.join] error", err);
     return res
       .status(400)
-      .json({ error: err.message || 'Could not get queue' });
+      .json({ error: err.message || "Could not get queue" });
   }
 }
 
@@ -34,19 +34,18 @@ export async function getCurrent(req: Request, res: Response) {
   try {
     const user = req.user;
 
-    const current = await service.getCurrentForDoctor(user?.id ?? '');
+    const result = await service.getCurrentForDoctor(user?.id ?? "");
 
-    if (!current) {
-      return res.json({
-        appointment: null,
-        message: 'No appointment currently in progress',
-      });
-    }
-
-    return res.json({ appointment: current });
+    return res.json({
+      doctorId: result.doctorId,
+      isPaused: result.isPaused,
+      queueSize: result.queueSize,
+      currentPatient: result.currentPatient,
+      waitingPatients: result.waitingPatients,
+    });
   } catch (err: any) {
-    console.error('[queue.getCurrent] error', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("[queue.getCurrent] error", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -61,12 +60,12 @@ export async function callNext(req: Request, res: Response) {
   try {
     const user = req.user;
 
-    const result = await service.callNext(user?.id ?? '');
+    const result = await service.callNext(user?.id ?? "");
 
     if (!result) {
       return res
         .status(404)
-        .json({ error: 'No confirmed appointments waiting in queue' });
+        .json({ error: "No confirmed appointments waiting in queue" });
     }
 
     return res.json({
@@ -74,17 +73,25 @@ export async function callNext(req: Request, res: Response) {
       waitingCount: result.waiting,
     });
   } catch (err: any) {
-    console.error('[queue.callNext] error', err);
+    console.error("[queue.callNext] error", err);
+
+    // Handle doctor paused error
+    if (err.message === "DOCTOR_PAUSED") {
+      return res.status(400).json({
+        error: "El médico está en pausa. No puede llamar pacientes",
+        isPaused: true,
+      });
+    }
 
     // Handle specific error for already in progress
     if (
       err.message &&
-      err.message.includes('already an appointment in progress')
+      err.message.includes("already an appointment in progress")
     ) {
       return res.status(409).json({ error: err.message });
     }
 
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -98,34 +105,34 @@ export async function completeTicket(req: Request, res: Response) {
     const { ticketId } = req.params;
 
     if (!ticketId) {
-      return res.status(400).json({ error: 'Appointment ID is required' });
+      return res.status(400).json({ error: "Appointment ID is required" });
     }
 
     const ok = await service.completeAppointment(ticketId);
 
     if (!ok) {
       return res.status(400).json({
-        error: 'Failed to complete appointment',
+        error: "Failed to complete appointment",
       });
     }
 
     return res.json({
       appointmentId: ticketId,
-      status: 'COMPLETED',
+      status: "COMPLETED",
     });
   } catch (err: any) {
-    console.error('[queue.completeTicket] error', err);
+    console.error("[queue.completeTicket] error", err);
 
     // Handle specific validation errors
-    if (err.message && err.message.includes('not found')) {
+    if (err.message && err.message.includes("not found")) {
       return res.status(404).json({ error: err.message });
     }
 
-    if (err.message && err.message.includes('IN_PROGRESS')) {
+    if (err.message && err.message.includes("IN_PROGRESS")) {
       return res.status(400).json({ error: err.message });
     }
 
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -139,13 +146,13 @@ export async function getPosition(req: Request, res: Response) {
     const { ticketId } = req.params;
 
     if (!ticketId) {
-      return res.status(400).json({ error: 'Appointment ID is required' });
+      return res.status(400).json({ error: "Appointment ID is required" });
     }
 
     const result = await service.getAppointmentPosition(ticketId);
 
     if (!result) {
-      return res.status(404).json({ error: 'Appointment not found' });
+      return res.status(404).json({ error: "Appointment not found" });
     }
 
     const response: any = {
@@ -156,14 +163,14 @@ export async function getPosition(req: Request, res: Response) {
     };
 
     // Add message if position is 0
-    if ('message' in result) {
+    if ("message" in result) {
       response.message = result.message;
     }
 
     return res.json(response);
   } catch (err: any) {
-    console.error('[queue.getPosition] error', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("[queue.getPosition] error", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -176,7 +183,7 @@ export async function listMyTickets(req: Request, res: Response) {
     const user = req.user;
 
     if (!user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const appointments = await service.getAppointmentsForUser(
@@ -189,8 +196,8 @@ export async function listMyTickets(req: Request, res: Response) {
       count: appointments.length,
     });
   } catch (err: any) {
-    console.error('[queue.listMyTickets] error', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("[queue.listMyTickets] error", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -205,31 +212,31 @@ export async function markNoShow(req: Request, res: Response) {
     const user = req.user;
 
     if (!ticketId) {
-      return res.status(400).json({ error: 'Appointment ID is required' });
+      return res.status(400).json({ error: "Appointment ID is required" });
     }
 
-    const updated = await service.markNoShow(ticketId, user?.id ?? '');
+    const updated = await service.markNoShow(ticketId, user?.id ?? "");
 
     return res.json({
       appointmentId: updated.id,
       status: updated.status,
-      message: 'Appointment marked as NO_SHOW',
+      message: "Appointment marked as NO_SHOW",
     });
   } catch (err: any) {
-    console.error('[queue.markNoShow] error', err);
+    console.error("[queue.markNoShow] error", err);
 
-    if (err.message && err.message.includes('not found')) {
+    if (err.message && err.message.includes("not found")) {
       return res.status(404).json({ error: err.message });
     }
 
     if (
       err.message &&
-      (err.message.includes('cancelled') || err.message.includes('completed'))
+      (err.message.includes("cancelled") || err.message.includes("completed"))
     ) {
       return res.status(400).json({ error: err.message });
     }
 
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
 
@@ -244,12 +251,12 @@ export async function getMyAppointmentsByDate(req: Request, res: Response) {
     const { date } = req.query;
 
     if (!user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (!date || typeof date !== 'string') {
+    if (!date || typeof date !== "string") {
       return res.status(400).json({
-        error: 'Date query parameter is required (format: YYYY-MM-DD)',
+        error: "Date query parameter is required (format: YYYY-MM-DD)",
       });
     }
 
@@ -257,7 +264,7 @@ export async function getMyAppointmentsByDate(req: Request, res: Response) {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       return res.status(400).json({
-        error: 'Invalid date format. Use YYYY-MM-DD (e.g., 2025-11-12)',
+        error: "Invalid date format. Use YYYY-MM-DD (e.g., 2025-11-12)",
       });
     }
 
@@ -269,7 +276,112 @@ export async function getMyAppointmentsByDate(req: Request, res: Response) {
       count: appointments.length,
     });
   } catch (err: any) {
-    console.error('[queue.getMyAppointmentsByDate] error', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("[queue.getMyAppointmentsByDate] error", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function togglePause(req: Request, res: Response) {
+  try {
+    const { doctorId } = req.params;
+    const { paused } = req.body;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "No estas autenticado" });
+    }
+
+    if (!doctorId) {
+      return res.status(400).json({ error: "El ID del Doctor es necesario" });
+    }
+
+    if (user.role !== "ADMINISTRADOR" && user.id !== doctorId) {
+      return res.status(403).json({
+        error: "Acceso denegado: solo puede pausar su propia cola",
+      });
+    }
+
+    if (typeof paused !== "boolean") {
+      return res.status(400).json({
+        error: 'El campo "paused" debe ser un valor booleano (verdadero/falso)',
+      });
+    }
+
+    const status = await service.toggleDoctorPause(doctorId, paused);
+
+    return res.json({
+      message: paused ? "Cola PAUSADA con éxito" : "Cola RETOMADA con éxito",
+      doctorId: status.doctorId,
+      isPaused: status.isPaused,
+      pausedAt: (status as any).pausedAt,
+      resumedAt: (status as any).resumedAt,
+    });
+  } catch (err: any) {
+    console.error("[queue.togglePause] error", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+/**
+ * GET /api/queue/debug
+ * Debug endpoint to see queue information (REMOVE IN PRODUCTION)
+ */
+export async function debugQueue(req: Request, res: Response) {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    console.log("[DEBUG] Doctor ID:", user.id);
+
+    const result = await service.join(user.id);
+
+    return res.json({
+      doctorId: user.id,
+      queueResult: result,
+      message: `Queue has ${result.queue.length} appointments`,
+    });
+  } catch (err: any) {
+    console.error("[queue.debug] error", err);
+    return res.status(500).json({ error: err.message || "Debug error" });
+  }
+}
+
+/**
+ * GET /api/queue/doctor/:doctorId/pause
+ * Get the pause status for a doctor
+ */
+export async function getPauseStatus(req: Request, res: Response) {
+  try {
+    const { doctorId } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "No estas autenticado" });
+    }
+
+    if (!doctorId) {
+      return res.status(400).json({ error: "El ID del Doctor es necesario" });
+    }
+
+    if (user.role !== "ADMINISTRADOR" && user.id !== doctorId) {
+      return res.status(403).json({
+        error: "Acceso denegado: solo puede ver su propio estado de pausa",
+      });
+    }
+
+    const status = await service.getDoctorPauseStatus(doctorId);
+
+    return res.json({
+      doctorId: status.doctorId,
+      isPaused: status.isPaused,
+      pausedAt: (status as any).pausedAt,
+      resumedAt: (status as any).resumedAt,
+    });
+  } catch (err: any) {
+    console.error("[queue.getPauseStatus] error", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
