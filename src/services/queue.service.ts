@@ -41,8 +41,9 @@ export async function join(doctorId: string) {
 
 /**
  * Get current appointment being attended by a doctor
+ * Also returns pause status and waiting patients count
  * @param doctorId - The doctor's ID
- * @returns The appointment currently IN_PROGRESS, or null
+ * @returns Object with current appointment, pause status, and queue info
  */
 export async function getCurrentForDoctor(doctorId: string) {
   const current = await prisma.appointment.findFirst({
@@ -54,7 +55,34 @@ export async function getCurrentForDoctor(doctorId: string) {
       startAt: 'asc',
     },
   });
-  return convertAppointmentToLocal(current as any);
+
+  // Get waiting patients count
+  const queueSize = await prisma.appointment.count({
+    where: {
+      doctorId,
+      status: 'CONFIRMED',
+    },
+  });
+
+  // Get waiting patients list
+  const waitingPatients = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      status: 'CONFIRMED',
+    },
+    orderBy: {
+      startAt: 'asc',
+    },
+  });
+
+  return {
+    doctorId,
+    isPaused: false, // TODO: Implement pause status if needed
+    pausedAt: null,
+    queueSize,
+    currentPatient: current ? convertAppointmentToLocal(current) : null,
+    waitingPatients: waitingPatients.map(a => convertAppointmentToLocal(a)),
+  };
 }
 
 /**
@@ -258,4 +286,88 @@ export async function markNoShow(appointmentId: string, doctorId: string) {
   });
 
   return convertAppointmentToLocal(updated as any);
+}
+
+/**
+ * Get all CONFIRMED appointments (waiting queue) for a doctor
+ * Used for Clinical Workflow to show waiting patients
+ * @param doctorId - The doctor's ID
+ * @returns List of confirmed appointments ordered by startAt
+ */
+export async function getConfirmedAppointments(doctorId: string) {
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      status: 'CONFIRMED',
+    },
+    orderBy: {
+      startAt: 'asc',
+    },
+  });
+
+  return {
+    appointments: appointments.map(a => convertAppointmentToLocal(a)),
+    total: appointments.length,
+  };
+}
+
+/**
+ * Get appointment history for a doctor (COMPLETED and NO_SHOW)
+ * Supports pagination and date filtering
+ * @param doctorId - The doctor's ID
+ * @param filters - Optional filters (page, limit, startDate, endDate)
+ * @returns Paginated list of historical appointments
+ */
+export async function getDoctorHistory(
+  doctorId: string,
+  filters: {
+    page?: number;
+    limit?: number;
+    startDate?: Date;
+    endDate?: Date;
+  } = {}
+) {
+  const page = filters.page || 1;
+  const limit = filters.limit || 20;
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    doctorId,
+    status: {
+      in: ['COMPLETED', 'NO_SHOW'],
+    },
+  };
+
+  // Add date filters if provided
+  if (filters.startDate || filters.endDate) {
+    where.startAt = {};
+    if (filters.startDate) {
+      where.startAt.gte = filters.startDate;
+    }
+    if (filters.endDate) {
+      where.startAt.lte = filters.endDate;
+    }
+  }
+
+  const [appointments, total] = await Promise.all([
+    prisma.appointment.findMany({
+      where,
+      orderBy: {
+        startAt: 'desc',
+      },
+      skip,
+      take: limit,
+    }),
+    prisma.appointment.count({ where }),
+  ]);
+
+  return {
+    appointments: appointments.map(a => convertAppointmentToLocal(a)),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 }
