@@ -56,6 +56,20 @@ router.get(
   controller.getPauseStatus
 );
 
+// Get confirmed appointments (waiting queue) for a doctor
+router.get(
+  "/doctor/:doctorId/confirmed",
+  requireRoles(["MEDICO", "ADMINISTRADOR"]),
+  controller.getConfirmedAppointments
+);
+
+// Get appointment history for a doctor
+router.get(
+  "/doctor/:doctorId/history",
+  requireRoles(["MEDICO", "ADMINISTRADOR"]),
+  controller.getDoctorHistory
+);
+
 // Get doctor's appointments by date
 router.get(
   "/my-appointments",

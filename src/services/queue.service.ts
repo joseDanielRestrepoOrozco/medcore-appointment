@@ -343,3 +343,85 @@ export async function getDoctorPauseStatus(doctorId: string) {
 
   return status || { doctorId, isPaused: false };
 }
+
+/**
+ * Get all CONFIRMED appointments for a doctor (waiting queue)
+ * @param doctorId - The doctor's ID
+ * @returns List of confirmed appointments ordered by startAt
+ */
+export async function getConfirmedAppointments(doctorId: string) {
+  const confirmed = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      status: "CONFIRMED",
+    },
+    orderBy: {
+      startAt: "asc",
+    },
+  });
+
+  return {
+    appointments: confirmed,
+    total: confirmed.length,
+  };
+}
+
+/**
+ * Get appointment history for a doctor (COMPLETED and NO_SHOW)
+ * @param doctorId - The doctor's ID
+ * @param filters - Optional filters for pagination and date range
+ * @returns List of historical appointments ordered by startAt descending
+ */
+export async function getDoctorHistory(
+  doctorId: string,
+  filters?: {
+    page?: number;
+    limit?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }
+) {
+  const page = filters?.page || 1;
+  const limit = filters?.limit || 20;
+  const skip = (page - 1) * limit;
+
+  const whereClause: any = {
+    doctorId,
+    status: {
+      in: ["COMPLETED", "NO_SHOW"],
+    },
+  };
+
+  // Add date filters if provided
+  if (filters?.startDate || filters?.endDate) {
+    whereClause.startAt = {};
+    if (filters.startDate) {
+      whereClause.startAt.gte = filters.startDate;
+    }
+    if (filters.endDate) {
+      whereClause.startAt.lte = filters.endDate;
+    }
+  }
+
+  const [appointments, total] = await Promise.all([
+    prisma.appointment.findMany({
+      where: whereClause,
+      orderBy: {
+        startAt: "desc",
+      },
+      skip,
+      take: limit,
+    }),
+    prisma.appointment.count({ where: whereClause }),
+  ]);
+
+  return {
+    appointments,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}

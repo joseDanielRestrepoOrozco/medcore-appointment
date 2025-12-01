@@ -385,3 +385,90 @@ export async function getPauseStatus(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
+/**
+ * GET /api/queue/doctor/:doctorId/confirmed
+ * Get all confirmed appointments (waiting queue) for a doctor
+ */
+export async function getConfirmedAppointments(req: Request, res: Response) {
+  try {
+    const { doctorId } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "No estas autenticado" });
+    }
+
+    // Only the doctor or admin can view this
+    if (user.role !== "ADMINISTRADOR" && user.id !== doctorId) {
+      return res.status(403).json({
+        error: "Acceso denegado: solo puede ver sus propias citas confirmadas",
+      });
+    }
+
+    const result = await service.getConfirmedAppointments(doctorId);
+
+    return res.json({
+      doctorId,
+      appointments: result.appointments,
+      total: result.total,
+    });
+  } catch (err: any) {
+    console.error("[queue.getConfirmedAppointments] error", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+/**
+ * GET /api/queue/doctor/:doctorId/history
+ * Get appointment history (COMPLETED and NO_SHOW) for a doctor
+ * Query parameters:
+ * - page: number (default: 1)
+ * - limit: number (default: 20)
+ * - startDate: ISO date string (optional)
+ * - endDate: ISO date string (optional)
+ */
+export async function getDoctorHistory(req: Request, res: Response) {
+  try {
+    const { doctorId } = req.params;
+    const user = req.user;
+    const { page, limit, startDate, endDate } = req.query;
+
+    if (!user) {
+      return res.status(401).json({ error: "No estas autenticado" });
+    }
+
+    // Only the doctor or admin can view history
+    if (user.role !== "ADMINISTRADOR" && user.id !== doctorId) {
+      return res.status(403).json({
+        error: "Acceso denegado: solo puede ver su propio historial",
+      });
+    }
+
+    const filters: any = {};
+
+    if (page) {
+      filters.page = parseInt(page as string);
+    }
+    if (limit) {
+      filters.limit = parseInt(limit as string);
+    }
+    if (startDate) {
+      filters.startDate = new Date(startDate as string);
+    }
+    if (endDate) {
+      filters.endDate = new Date(endDate as string);
+    }
+
+    const result = await service.getDoctorHistory(doctorId, filters);
+
+    return res.json({
+      doctorId,
+      appointments: result.appointments,
+      pagination: result.pagination,
+    });
+  } catch (err: any) {
+    console.error("[queue.getDoctorHistory] error", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
