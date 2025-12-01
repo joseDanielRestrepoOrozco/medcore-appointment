@@ -399,6 +399,10 @@ export async function getConfirmedAppointments(req: Request, res: Response) {
       return res.status(401).json({ error: "No estas autenticado" });
     }
 
+    if (!doctorId) {
+      return res.status(400).json({ error: "El ID del Doctor es necesario" });
+    }
+
     // Only the doctor or admin can view this
     if (user.role !== "ADMINISTRADOR" && user.id !== doctorId) {
       return res.status(403).json({
@@ -436,6 +440,10 @@ export async function getDoctorHistory(req: Request, res: Response) {
 
     if (!user) {
       return res.status(401).json({ error: "No estas autenticado" });
+    }
+
+    if (!doctorId) {
+      return res.status(400).json({ error: "El ID del Doctor es necesario" });
     }
 
     // Only the doctor or admin can view history

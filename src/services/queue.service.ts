@@ -371,3 +371,65 @@ export async function getDoctorHistory(
     },
   };
 }
+
+/**
+ * Get appointments for a doctor on a specific date
+ * @param doctorId - The doctor's ID
+ * @param date - Date string in format YYYY-MM-DD
+ * @returns List of appointments for that date
+ */
+export async function getAppointmentsByDate(doctorId: string, date: string) {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      startAt: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    orderBy: {
+      startAt: 'asc',
+    },
+  });
+
+  return appointments.map(a => convertAppointmentToLocal(a));
+}
+
+/**
+ * Toggle doctor's pause status
+ * @param doctorId - The doctor's ID
+ * @param paused - Boolean indicating if doctor should be paused
+ * @returns Object with pause status
+ */
+export async function toggleDoctorPause(doctorId: string, paused: boolean) {
+  // In a real implementation, this would update a doctor_status table
+  // For now, return a mock response
+  return {
+    doctorId,
+    isPaused: paused,
+    pausedAt: paused ? new Date() : null,
+    resumedAt: !paused ? new Date() : null,
+  };
+}
+
+/**
+ * Get doctor's pause status
+ * @param doctorId - The doctor's ID
+ * @returns Object with current pause status
+ */
+export async function getDoctorPauseStatus(doctorId: string) {
+  // In a real implementation, this would query a doctor_status table
+  // For now, return a default response
+  return {
+    doctorId,
+    isPaused: false,
+    pausedAt: null,
+    resumedAt: null,
+  };
+}
