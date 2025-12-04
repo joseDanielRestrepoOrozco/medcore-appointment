@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import appointmentsRouter from './routes/appointments.routes.js';
 import queueRouter from './routes/queue.routes.js';
+import { setupSwagger } from './libs/swagger.js';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Swagger Documentation
+setupSwagger(app);
 
 // Simple request logger to help diagnose incoming paths (development only)
 app.use((req, _res, next) => {
